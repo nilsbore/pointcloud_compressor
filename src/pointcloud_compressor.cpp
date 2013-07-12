@@ -94,6 +94,12 @@ void pointcloud_compressor::compress_cloud()
 
     std::vector<int> index_search;
     std::vector<float> distances;
+    Eigen::Matrix3f R;
+    MatrixXf rtn(sz, sz);
+    Matrix<short, Dynamic, Dynamic> red(sz, sz);
+    Matrix<short, Dynamic, Dynamic> green(sz, sz);
+    Matrix<short, Dynamic, Dynamic> blue(sz, sz);
+    Array<bool, Dynamic, Dynamic> mask(sz, sz);
     for (point center : centers) {
         octree.radiusSearch(center, radius, index_search, distances);
         MatrixXf points(4, index_search.size());
@@ -107,17 +113,17 @@ void pointcloud_compressor::compress_cloud()
             colors(1, i) = cloud->points[index_search[i]].g;
             colors(2, i) = cloud->points[index_search[i]].b;
         }
-        Eigen::Matrix3f R;
+        R.setZero();
         compute_rotation(R, points);
-        MatrixXf rtn(sz, sz);
-        Matrix<short, Dynamic, Dynamic> red(sz, sz);
-        Matrix<short, Dynamic, Dynamic> green(sz, sz);
-        Matrix<short, Dynamic, Dynamic> blue(sz, sz);
-        Array<bool, Dynamic, Dynamic> mask(sz, sz);
-        Vector3f center_rtn(center.x, center.y, center.z);
-        project_points(rtn, center_rtn, mask, R, points, red, green, blue, colors);
+        rtn.setZero();
+        red.setZero();
+        green.setZero();
+        blue.setZero();
+        mask.setZero();
+        Vector3f mid(center.x, center.y, center.z);
+        project_points(rtn, mid, mask, R, points, red, green, blue, colors);
         rotations.push_back(R);
-        mids.push_back(center_rtn);
+        mids.push_back(mid);
         patches.push_back(rtn);
         masks.push_back(mask);
         reds.push_back(red);
