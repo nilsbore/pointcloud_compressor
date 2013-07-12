@@ -43,8 +43,6 @@ void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points
     }
     R.col(1).normalize();
     R.col(2) << normal.cross(R.col(1));
-    //std::cout << R.transpose()*R << std::endl;
-    //std::cout << R.determinant() << std::endl;
 }
 
 void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
@@ -55,11 +53,8 @@ void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
                                            Matrix<short, Dynamic, Dynamic>& blue,
                                            const Matrix<short, Dynamic, Dynamic>& colors)
 {
-    // Also pass in a bitmask result matrix
     MatrixXi count(sz, sz);
     count.setZero();
-    //points.block(3, points.cols(), 0, 0) -= center;
-    //points.block(3, points.cols(), 0, 0) = R.transpose()*points.block(3, points.cols(), 0, 0);
     Vector3f pt;
     Matrix<short, 3, 1> c;
     for (int i = 0; i < points.cols(); ++i) {
@@ -67,28 +62,22 @@ void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
         pt(1) += res/2.0f;
         pt(2) += res/2.0f;
         if (pt(1) > res || pt(1) < 0 || pt(2) > res || pt(2) < 0) {
-            //std::cout << "Was outside!" << std::endl;
             continue;
         }
-        //std::cout << "Was inside!" << std::endl;
         int x = int(float(sz)*pt(1)/res);
         int y = int(float(sz)*pt(2)/res);
         float current_count = count(y, x);
         rtn(y, x) = (current_count*rtn(y, x) + pt(0)) / (current_count + 1);
         c = colors.col(i);
-        red(y, x) = short((current_count*red(y, x) + float(c(0))) / (current_count + 1));
-        green(y, x) = short((current_count*green(y, x) + float(c(1))) / (current_count + 1));
-        blue(y, x) = short((current_count*blue(y, x) + float(c(2))) / (current_count + 1));
+        red(y, x) = short((current_count*float(red(y, x)) + float(c(0))) / (current_count + 1));
+        green(y, x) = short((current_count*float(green(y, x)) + float(c(1))) / (current_count + 1));
+        blue(y, x) = short((current_count*float(blue(y, x)) + float(c(2))) / (current_count + 1));
         count(y, x) += 1;
     }
     float mn = rtn.mean();
     rtn.array() -= mn;
     center += mn*R.col(0);
     isSet = count.array() > 0;
-    //std::cout << count << std::endl;
-    //std::cout << isSet << std::endl;
-    //std::cout << rtn << std::endl;
-    //std::cout << "---------" << std::endl;
 }
 
 void pointcloud_compressor::compress_cloud()
@@ -192,8 +181,6 @@ void pointcloud_compressor::display_cloud(pointcloud::Ptr display_cloud,
     viewer->setBackgroundColor (0, 0, 0);
 
     // Coloring and visualizing target cloud (red).
-    //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>
-      //      target_color (display_cloud, 220, 208, 255);
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(display_cloud);
     viewer->addPointCloud<point> (display_cloud, rgb, "cloud");
     viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
