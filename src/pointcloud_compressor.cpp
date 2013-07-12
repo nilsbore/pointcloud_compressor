@@ -29,20 +29,32 @@ void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points
     Vector3f normal;
     normal << svd.matrixV().block<3, 1>(0, 3);
     normal.normalize();
-    if (normal(2) < 0) { // To ensure that normals on a surface are oriented in the same direction
-        normal *= -1;
+    Vector3f x(1.0f, 0.0f, 0.0f);
+    Vector3f y(0.0f, 1.0f, 0.0f);
+    Vector3f z(0.0f, 0.0f, 1.0f);
+    if (fabs(normal(0)) > fabs(normal(1)) && fabs(normal(0)) > fabs(normal(2))) { // pointing in x dir
+        if (normal(0) < 0) {
+            normal *= -1;
+        }
+        R.col(0) = normal;
+        R.col(1) = z.cross(normal);
     }
-    R.col(0) << normal;
-    Vector3f up(0.0f, 0.0f, 1.0f);
-    Vector3f forward(1.0f, 0.0f, 0.0f);
-    if (fabs(up.dot(normal)) > cos(M_PI/4.0f) || fabs(up.dot(normal)) < cos(3.0f*M_PI/4.0f)) {
-        R.col(1) << forward.cross(normal);
+    else if (fabs(normal(1)) > fabs(normal(0)) && fabs(normal(1)) > fabs(normal(2))) { // pointing in y dir
+        if (normal(1) < 0) {
+            normal *= -1;
+        }
+        R.col(0) = normal;
+        R.col(1) = x.cross(normal);
     }
-    else {
-        R.col(1) << up.cross(normal);
+    else { // pointing in z dir
+        if (normal(2) < 0) {
+            normal *= -1;
+        }
+        R.col(0) = normal;
+        R.col(1) = y.cross(normal);
     }
     R.col(1).normalize();
-    R.col(2) << normal.cross(R.col(1));
+    R.col(2) = normal.cross(R.col(1));
 }
 
 void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
