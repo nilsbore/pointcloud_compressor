@@ -15,7 +15,9 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
       PCL_ERROR("Couldn't read file room_scan2.pcd \n");
       return;
     }
+    std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
     compress_cloud();
+    std::cout << "Number of patches: " << patches.size() << std::endl;
     decompress_cloud();
 }
 
@@ -88,7 +90,7 @@ void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
     }
     float mn = rtn.mean();
     rtn.array() -= mn;
-    center += mn*R.col(0);
+    center += mn*R.col(0); // should this be minus??
     isSet = count.array() > 0;
 }
 
@@ -168,8 +170,8 @@ void pointcloud_compressor::decompress_cloud()
                     continue;
                 }
                 pt(0) = patches[i](y, x);
-                pt(1) = (float(x) + 0.5f)*res/float(sz);
-                pt(2) = (float(y) + 0.5f)*res/float(sz);
+                pt(1) = (float(x) + 0.5f)*res/float(sz) - res/2.0f;
+                pt(2) = (float(y) + 0.5f)*res/float(sz) - res/2.0f;
                 pt = rotations[i]*pt + mids[i];
                 int ind = i*sz*sz + y*sz + x;
                 ncloud->at(ind).x = pt(0);
@@ -187,6 +189,7 @@ void pointcloud_compressor::decompress_cloud()
         normals->at(i).normal_y = rotations[i](1, 0);
         normals->at(i).normal_z = rotations[i](2, 0);
     }
+    std::cout << "Size of transformed point cloud: " << ncloud->width*ncloud->height << std::endl;
     display_cloud(ncloud, ncenters, normals);
 }
 
