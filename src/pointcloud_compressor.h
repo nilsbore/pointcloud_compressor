@@ -34,7 +34,8 @@ public:
                         Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
                         Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
                         Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
-                        const Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&);
+                        const Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
+                        const std::vector<int>&, int*, int);
     void decompress_cloud();
     pointcloud_compressor(const std::string&, float, int);
 };
