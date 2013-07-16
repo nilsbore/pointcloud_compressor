@@ -6,6 +6,6 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-    pointcloud_compressor comp("../data/office1.pcd", 0.05f, 20); // 0.05f, 10
+    pointcloud_compressor comp("../data/office2.pcd", 0.08f, 19, 100); // 0.05f, 10
     return 0;
 }

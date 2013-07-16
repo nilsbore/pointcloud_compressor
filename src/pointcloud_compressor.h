@@ -15,15 +15,21 @@ private:
     pointcloud::Ptr cloud;
     float res;
     int sz;
+    int dict_sz;
     std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > mids;
     std::vector<Eigen::MatrixXf, Eigen::aligned_allocator<Eigen::MatrixXf> > patches;
     std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > reds;
     std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > greens;
     std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > blues;
+    std::vector<short> meanReds;
+    std::vector<short> meanGreens;
+    std::vector<short> meanBlues;
     std::vector<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> > > masks;
+    Eigen::MatrixXf D;
+    Eigen::MatrixXf X;
 public:
-    void compress_cloud();
+    void project_cloud();
     void display_cloud(pointcloud::Ptr,
                        pcl::PointCloud<pcl::PointXYZ>::Ptr,
                        pcl::PointCloud<pcl::Normal>::Ptr);
@@ -37,7 +43,8 @@ public:
                         const Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
                         const std::vector<int>&, int*, int);
     void decompress_cloud();
-    pointcloud_compressor(const std::string&, float, int);
+    void compress_cloud();
+    pointcloud_compressor(const std::string&, float, int, int);
 };
 
 #endif // POINTCLOUD_COMPRESSOR_H

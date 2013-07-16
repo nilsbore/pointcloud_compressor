@@ -8,7 +8,8 @@
 
 using namespace Eigen;
 
-pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz) : cloud(new pointcloud), res(res), sz(sz)
+pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_sz) :
+    cloud(new pointcloud), res(res), sz(sz), dict_sz(dict_sz)
 {
     if (pcl::io::loadPCDFile<point> (filename, *cloud) == -1)
     {
@@ -16,7 +17,7 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
       return;
     }
     std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
-    compress_cloud();
+    project_cloud();
     std::cout << "Number of patches: " << patches.size() << std::endl;
     decompress_cloud();
 }
@@ -71,7 +72,7 @@ void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
                                            int j)
 {
     MatrixXi count(sz, sz);
-    count.setZero(sz, sz);
+    count.setZero();
     Vector3f pt;
     Matrix<short, 3, 1> c;
     for (int i = 0; i < points.cols(); ++i) {
@@ -116,7 +117,7 @@ void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
     isSet = count.array() > 0;
 }
 
-void pointcloud_compressor::compress_cloud()
+void pointcloud_compressor::project_cloud()
 {
     pcl::octree::OctreePointCloudSearch<point> octree(res);
     octree.setInputCloud(cloud);
@@ -161,16 +162,36 @@ void pointcloud_compressor::compress_cloud()
         Vector3f mid(center.x, center.y, center.z);
         project_points(rtn, mid, mask, R, points, red, green, blue,
                        colors, index_search, occupied_indices, j);
-        rotations.push_back(R);
+        rotations.push_back(R); // rewrite all this shit to use arrays instead
         mids.push_back(mid);
         patches.push_back(rtn);
         masks.push_back(mask);
+        meanReds.push_back(red.mean());
+        red.array() -= meanReds.back();
         reds.push_back(red);
+        meanGreens.push_back(green.mean());
+        green.array() -= meanGreens.back();
         greens.push_back(green);
+        meanBlues.push_back(blue.mean());
+        blue.array() -= meanBlues.back();
         blues.push_back(blue);
         j++;
     }
     delete[] occupied_indices;
+}
+
+void pointcloud_compressor::compress_cloud()
+{
+    int N = 100;
+
+    while (true) {
+        for (int i = 0; i < patches.size(); ++i) {
+
+        }
+        for (int j = 0; j < N; ++j) {
+
+        }
+    }
 }
 
 void pointcloud_compressor::decompress_cloud()
@@ -203,9 +224,9 @@ void pointcloud_compressor::decompress_cloud()
                 ncloud->at(counter).x = pt(0);
                 ncloud->at(counter).y = pt(1);
                 ncloud->at(counter).z = pt(2);
-                ncloud->at(counter).r = reds[i](y, x);
-                ncloud->at(counter).g = greens[i](y, x);
-                ncloud->at(counter).b = blues[i](y, x);
+                ncloud->at(counter).r = reds[i](y, x) + meanReds[i];
+                ncloud->at(counter).g = greens[i](y, x) + meanGreens[i];
+                ncloud->at(counter).b = blues[i](y, x) + meanBlues[i];
                 ++counter;
             }
         }
@@ -235,7 +256,7 @@ void pointcloud_compressor::display_cloud(pointcloud::Ptr display_cloud,
     viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                     1, "cloud");
 
-    //viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(display_centers, display_normals, 10, 0.05, "normals");
+    viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(display_centers, display_normals, 10, 0.05, "normals");
 
     // Starting visualizer
     viewer->addCoordinateSystem (1.0);
