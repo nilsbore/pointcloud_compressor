@@ -121,6 +121,7 @@ void pointcloud_compressor::project_points(MatrixXf& rtn, Vector3f& center,
     rtn.array() -= mn;
     center += mn*R.col(0); // should this be minus??
     isSet = count.array() > 0;
+    rtn.array() *= isSet.cast<float>();
 }
 
 void pointcloud_compressor::project_cloud()
@@ -241,6 +242,7 @@ void pointcloud_compressor::compress_cloud()
         Lk[k].clear();
     }*/
     int ind;
+    int mean_words;
     std::vector<int> unused;
     float error = 0;
     float last_error;
@@ -256,6 +258,7 @@ void pointcloud_compressor::compress_cloud()
         }
         unused.clear();
         X.setZero(words_max, patches.size());
+        mean_words = 0;
         for (int i = 0; i < patches.size(); ++i) {
             s = VectorXf::Map(patches[i].data(), sz*sz);
             mask = Array<bool, Dynamic, 1>::Map(masks[i].data(), sz*sz).cast<float>();
@@ -295,8 +298,11 @@ void pointcloud_compressor::compress_cloud()
                 //std::cout << residual.squaredNorm() << std::endl;
             }
             nbr_bases[i] = k;
+            mean_words += k;
             //std::cout << k << std::endl;
         }
+        mean_words /= patches.size();
+        std::cout << "Mean words: " << mean_words << std::endl;
         // compute DX here - NO! can change X in loop
         for (int j = 0; j < dict_sz; ++j) {
             if (L[j].size() == 0) { // if this happens we should probably randomize a new vector
