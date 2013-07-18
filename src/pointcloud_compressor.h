@@ -28,6 +28,8 @@ private:
     std::vector<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> > > masks;
     Eigen::MatrixXf D;
     Eigen::MatrixXf X;
+    Eigen::MatrixXi I;
+    std::vector<int> nbr_bases;
 public:
     void project_cloud();
     void display_cloud(pointcloud::Ptr,
@@ -42,8 +44,10 @@ public:
                         Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
                         const Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>&,
                         const std::vector<int>&, int*, int);
-    void decompress_cloud();
     void compress_cloud();
+    void reconstruct_patches();
+    void reconstruct_cloud();
+    void get_random_patches(std::vector<int>&, int);
     pointcloud_compressor(const std::string&, float, int, int);
 };
 

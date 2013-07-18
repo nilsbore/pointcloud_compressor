@@ -5,6 +5,8 @@
 #include <vector>
 #include <stdint.h>
 #include <boost/thread/thread.hpp>
+#include <cstdlib>
+#include <ctime>
 
 using namespace Eigen;
 
@@ -19,7 +21,8 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
     std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
     project_cloud();
     std::cout << "Number of patches: " << patches.size() << std::endl;
-    decompress_cloud();
+    reconstruct_cloud();
+    compress_cloud();
 }
 
 void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points)
@@ -180,21 +183,162 @@ void pointcloud_compressor::project_cloud()
     delete[] occupied_indices;
 }
 
+void pointcloud_compressor::get_random_patches(std::vector<int>& rtn, int n)
+{
+    rtn.clear();
+    rtn.resize(n);
+    std::srand(std::time(0)); // use current time as seed for random generator
+    int ind;
+    for (int j = 0; j < n; ++j) {
+        do {
+            ind = std::rand() % patches.size();
+        }
+        while (std::find(rtn.begin(), rtn.end(), ind) != rtn.end());
+        rtn[j] = ind;
+    }
+    std::cout << "Randomized " << n << " numbers" << std::endl;
+}
+
 void pointcloud_compressor::compress_cloud()
 {
-    int N = 100;
+    int K = 30;
+    float eps = 1e-4f;
+    float stop_eps = 1e-4f;
 
+    D.resize(sz*sz, dict_sz);
+    X.resize(K, patches.size());
+    I.resize(K, patches.size());
+    X.setZero();
+    I.setZero();
+    VectorXf temp(sz*sz);
+    std::vector<int> rnd;
+    get_random_patches(rnd, dict_sz);
+    for (int j = 0; j < dict_sz; ++j) {
+        temp = VectorXf::Map(patches[rnd[j]].data(), sz*sz);
+        float norm = temp.norm();
+        if (norm > 0) {
+            temp /= norm;
+        }
+        D.col(j) = temp;
+    }
+
+    //std::cout << "Dictionary:\n" << D << std::endl;
+
+    nbr_bases.resize(patches.size());
+    VectorXf s(sz*sz);
+    VectorXf residual(sz*sz);
+    MatrixXf Di(sz*sz, K);
+    ArrayXf mask(sz*sz);
+    VectorXf U;
+    std::vector<std::vector<int>> L;
+    std::vector<std::vector<int>> Lk;
+    L.resize(dict_sz);
+    Lk.resize(dict_sz);
+    /*for (int k = 0; k < dict_size; ++k) {
+        L[k].clear();
+        Lk[k].clear();
+    }*/
+    int ind;
+    std::vector<int> unused;
     while (true) {
+        get_random_patches(rnd, unused.size());
+        for (int j = 0; j < unused.size(); ++j) {
+            temp = VectorXf::Map(patches[rnd[j]].data(), sz*sz);
+            float norm = temp.norm();
+            if (norm > 0) {
+                temp /= norm;
+            }
+            D.col(unused[j]) = temp;
+        }
+        unused.clear();
         for (int i = 0; i < patches.size(); ++i) {
-
+            s = VectorXf::Map(patches[i].data(), sz*sz);
+            mask = Array<bool, Dynamic, 1>::Map(masks[i].data(), sz*sz).cast<float>();
+            residual = mask*s.array(); // actually unnecessary cause non-true will be zero anyways
+            //std::cout << "----------\n" << mask << "\n--------" << std::endl;
+            Di.setZero();
+            int k;
+            for (k = 0; k < K; ++k) {
+                if (residual.squaredNorm() < eps) {
+                    break;
+                }
+                temp = residual.transpose()*D;
+                float w = temp.maxCoeff(&ind);
+                X(k, i) = w;
+                I(k, i) = ind;
+                Di.col(k) = D.col(ind);
+                residual = s.array() - mask*(Di*X.col(i)).array();
+                L[ind].push_back(i); // this is done because we do it in the opposite way her
+                Lk[ind].push_back(k); // when recreating, focus lies on recreating the patches fast
+            }
+            nbr_bases[i] = k;
+            //std::cout << k << std::endl;
         }
-        for (int j = 0; j < N; ++j) {
-
+        // compute DX here - NO! can change X in loop
+        for (int j = 0; j < dict_sz; ++j) {
+            if (L[j].size() == 0) { // if this happens we should probably randomize a new vector
+                unused.push_back(j);
+                continue;
+            }
+            MatrixXf SL(sz*sz, L[j].size());
+            ArrayXXf WL(sz*sz, L[j].size());
+            //MatrixXf XL(dict_sz, L[j].size());
+            MatrixXf DXL(sz*sz, L[j].size());
+            DXL.setZero();
+            RowVectorXf XLj(L[j].size());
+            //std::cout << "L[j].size(): " << L[j].size() << ", patches.size(): " << patches.size() << std::endl;
+            for (int i = 0; i < L[j].size(); ++i) {
+                ind = L[j][i];
+                SL.col(i) = VectorXf::Map(patches[ind].data(), sz*sz);
+                WL.col(i) = Array<bool, Dynamic, 1>::Map(masks[ind].data(), sz*sz).cast<float>();
+                XLj(i) = X(Lk[j][i], ind);
+                for (int k = 0; k < nbr_bases[ind]; ++k) { // find a neater way to do this
+                    /*std::cout << "bases: " << nbr_bases[i] << std::endl;
+                    std::cout << "height: " << X.rows() << ", width: " << X.cols() << std::endl;
+                    std::cout << "k: " << k << ", ind: " << ind << std::endl;*/
+                    DXL.col(i) += X(k, ind)*D.col(I(k, ind));
+                }
+            }
+            //std::cout << "width: " << D.col(j).transpose().cols() << ", height: " << D.col(j).transpose().rows() << std::endl;
+            //std::cout << "width: " << D.col(j).transpose().cols() << ", height: " << D.col(j).transpose().rows() << std::endl;
+            //std::cout << SL - (WL*(DXL-D.col(j)*XLj).array()).matrix() << std::endl;
+            //std::cout << "------------------" << std::endl;
+            JacobiSVD<MatrixXf> svd(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(),
+                                    ComputeThinU | ComputeThinV);
+            U = svd.matrixU().col(0);
+            U.normalize();
+            D.col(j) = U;
+            XLj = svd.singularValues()(0)*svd.matrixV().col(0);
+            for (int i = 0; i < L[j].size(); ++i) {
+                X(Lk[j][i], L[j][i]) = XLj(i);
+            }
+            L[j].clear();
+            Lk[j].clear();
         }
+        float error = 0;
+        for (int i = 0; i < patches.size(); ++i)  { // mean squared norm of columns, running average
+            residual = VectorXf::Map(patches[i].data(), sz*sz);
+            mask = Array<bool, Dynamic, 1>::Map(masks[i].data(), sz*sz).cast<float>();
+            for (int k = 0; k < nbr_bases[i]; ++k) {
+                //VectorXf Dk = D.col(I(k, i));
+                residual.array() -= X(k, i)*mask*D.col(I(k, i)).array();
+            }
+            error += residual.squaredNorm();
+        }
+        error /= float(patches.size());
+        if (error < stop_eps) {
+            break;
+        }
+        std::cout << "Error: " << error << std::endl;
     }
 }
 
-void pointcloud_compressor::decompress_cloud()
+void pointcloud_compressor::reconstruct_patches()
+{
+
+}
+
+void pointcloud_compressor::reconstruct_cloud()
 {
     int n = patches.size();
     pointcloud::Ptr ncloud(new pointcloud);
