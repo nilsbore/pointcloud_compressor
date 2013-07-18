@@ -16,6 +16,9 @@ private:
     float res;
     int sz;
     int dict_sz;
+    int words_max;
+    float proj_err;
+    float end_diff;
     std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > mids;
     std::vector<Eigen::MatrixXf, Eigen::aligned_allocator<Eigen::MatrixXf> > patches;
@@ -48,7 +51,7 @@ public:
     void reconstruct_patches();
     void reconstruct_cloud();
     void get_random_patches(std::vector<int>&, int);
-    pointcloud_compressor(const std::string&, float, int, int);
+    pointcloud_compressor(const std::string&, float, int, int, int, float, float);
 };
 
 #endif // POINTCLOUD_COMPRESSOR_H

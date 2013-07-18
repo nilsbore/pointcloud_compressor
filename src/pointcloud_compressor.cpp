@@ -7,11 +7,13 @@
 #include <boost/thread/thread.hpp>
 #include <cstdlib>
 #include <ctime>
+#include <Eigen/Dense>
 
 using namespace Eigen;
 
-pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_sz) :
-    cloud(new pointcloud), res(res), sz(sz), dict_sz(dict_sz)
+pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_sz,
+                                             int words_max, float proj_err, float end_diff) :
+    cloud(new pointcloud), res(res), sz(sz), dict_sz(dict_sz), words_max(words_max), proj_err(proj_err), end_diff(end_diff)
 {
     if (pcl::io::loadPCDFile<point> (filename, *cloud) == -1)
     {
@@ -21,8 +23,9 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
     std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
     project_cloud();
     std::cout << "Number of patches: " << patches.size() << std::endl;
-    reconstruct_cloud();
     compress_cloud();
+    reconstruct_patches();
+    reconstruct_cloud();
 }
 
 void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points)
@@ -187,6 +190,9 @@ void pointcloud_compressor::get_random_patches(std::vector<int>& rtn, int n)
 {
     rtn.clear();
     rtn.resize(n);
+    if (n == 0) {
+        return;
+    }
     std::srand(std::time(0)); // use current time as seed for random generator
     int ind;
     for (int j = 0; j < n; ++j) {
@@ -201,13 +207,9 @@ void pointcloud_compressor::get_random_patches(std::vector<int>& rtn, int n)
 
 void pointcloud_compressor::compress_cloud()
 {
-    int K = 30;
-    float eps = 1e-4f;
-    float stop_eps = 1e-4f;
-
     D.resize(sz*sz, dict_sz);
-    X.resize(K, patches.size());
-    I.resize(K, patches.size());
+    X.resize(words_max, patches.size());
+    I.resize(words_max, patches.size());
     X.setZero();
     I.setZero();
     VectorXf temp(sz*sz);
@@ -227,7 +229,7 @@ void pointcloud_compressor::compress_cloud()
     nbr_bases.resize(patches.size());
     VectorXf s(sz*sz);
     VectorXf residual(sz*sz);
-    MatrixXf Di(sz*sz, K);
+    MatrixXf Di(sz*sz, words_max);
     ArrayXf mask(sz*sz);
     VectorXf U;
     std::vector<std::vector<int>> L;
@@ -240,6 +242,8 @@ void pointcloud_compressor::compress_cloud()
     }*/
     int ind;
     std::vector<int> unused;
+    float error = 0;
+    float last_error;
     while (true) {
         get_random_patches(rnd, unused.size());
         for (int j = 0; j < unused.size(); ++j) {
@@ -251,25 +255,44 @@ void pointcloud_compressor::compress_cloud()
             D.col(unused[j]) = temp;
         }
         unused.clear();
+        X.setZero(words_max, patches.size());
         for (int i = 0; i < patches.size(); ++i) {
             s = VectorXf::Map(patches[i].data(), sz*sz);
             mask = Array<bool, Dynamic, 1>::Map(masks[i].data(), sz*sz).cast<float>();
-            residual = mask*s.array(); // actually unnecessary cause non-true will be zero anyways
+            residual = mask*s.array();
             //std::cout << "----------\n" << mask << "\n--------" << std::endl;
-            Di.setZero();
+            //std::cout << "----------------" << std::endl;
+            Di.setZero(sz*sz, words_max);
             int k;
-            for (k = 0; k < K; ++k) {
-                if (residual.squaredNorm() < eps) {
+            for (k = 0; k < words_max; ++k) {
+                if (residual.squaredNorm() < proj_err) {
                     break;
                 }
                 temp = residual.transpose()*D;
-                float w = temp.maxCoeff(&ind);
-                X(k, i) = w;
+                //std::cout << temp.transpose() << std::endl;
+                for (int m = 0; m < k; ++m) {
+                    temp(I(m, i)) = 0;
+                }
+                temp.array().abs().maxCoeff(&ind);
+                X(k, i) = temp(ind);
                 I(k, i) = ind;
                 Di.col(k) = D.col(ind);
-                residual = s.array() - mask*(Di*X.col(i)).array();
+                residual = mask*s.array() - mask*(Di*X.col(i)).array();
+                /*std::cout << "ind: " << ind << std::endl;
+                std::cout << "-----------" << std::endl;
+                if (std::find(L[ind].begin(), L[ind].end(), i) != L[ind].end()) {
+                    for (int ll : L[ind]) {
+                        std::cout << ll << " ";
+                    }
+                    std::cout << std::endl;
+                    std::cout << "i: " << i << std::endl;
+                    std::cout << "ind: " << ind << std::endl;
+                    std::cout << "Already in the set!" << std::endl;
+                    exit(1);
+                }*/
                 L[ind].push_back(i); // this is done because we do it in the opposite way her
                 Lk[ind].push_back(k); // when recreating, focus lies on recreating the patches fast
+                //std::cout << residual.squaredNorm() << std::endl;
             }
             nbr_bases[i] = k;
             //std::cout << k << std::endl;
@@ -289,8 +312,8 @@ void pointcloud_compressor::compress_cloud()
             //std::cout << "L[j].size(): " << L[j].size() << ", patches.size(): " << patches.size() << std::endl;
             for (int i = 0; i < L[j].size(); ++i) {
                 ind = L[j][i];
-                SL.col(i) = VectorXf::Map(patches[ind].data(), sz*sz);
                 WL.col(i) = Array<bool, Dynamic, 1>::Map(masks[ind].data(), sz*sz).cast<float>();
+                SL.col(i) = WL.col(i)*ArrayXf::Map(patches[ind].data(), sz*sz);
                 XLj(i) = X(Lk[j][i], ind);
                 for (int k = 0; k < nbr_bases[ind]; ++k) { // find a neater way to do this
                     /*std::cout << "bases: " << nbr_bases[i] << std::endl;
@@ -315,10 +338,11 @@ void pointcloud_compressor::compress_cloud()
             L[j].clear();
             Lk[j].clear();
         }
-        float error = 0;
+        last_error = error;
+        error = 0;
         for (int i = 0; i < patches.size(); ++i)  { // mean squared norm of columns, running average
-            residual = VectorXf::Map(patches[i].data(), sz*sz);
             mask = Array<bool, Dynamic, 1>::Map(masks[i].data(), sz*sz).cast<float>();
+            residual = mask*ArrayXf::Map(patches[i].data(), sz*sz);
             for (int k = 0; k < nbr_bases[i]; ++k) {
                 //VectorXf Dk = D.col(I(k, i));
                 residual.array() -= X(k, i)*mask*D.col(I(k, i)).array();
@@ -326,7 +350,7 @@ void pointcloud_compressor::compress_cloud()
             error += residual.squaredNorm();
         }
         error /= float(patches.size());
-        if (error < stop_eps) {
+        if (fabs(error - last_error) < end_diff) {
             break;
         }
         std::cout << "Error: " << error << std::endl;
@@ -335,7 +359,18 @@ void pointcloud_compressor::compress_cloud()
 
 void pointcloud_compressor::reconstruct_patches()
 {
-
+    VectorXf s(sz*sz);
+    ArrayXXf w(sz, sz);
+    s.setZero();
+    for (int i = 0; i < patches.size(); ++i) {
+        MatrixXf oldPatch = patches[i];
+        for (int k = 0; k < nbr_bases[i]; ++k) {
+            s += X(k, i)*D.col(I(k, i));
+        }
+        patches[i] = MatrixXf::Map(s.data(), sz, sz);
+        w = Array<bool, Dynamic, Dynamic>::Map(masks[i].data(), sz, sz).cast<float>();
+        //std::cout << w*(oldPatch - patches[i]).array() << std::endl;
+    }
 }
 
 void pointcloud_compressor::reconstruct_cloud()
