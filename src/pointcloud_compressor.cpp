@@ -230,7 +230,7 @@ void pointcloud_compressor::compress_cloud()
     nbr_bases.resize(patches.size());
     VectorXf s(sz*sz);
     VectorXf residual(sz*sz);
-    MatrixXf Di(sz*sz, words_max);
+    //MatrixXf Di(sz*sz, words_max);
     ArrayXf mask(sz*sz);
     VectorXf U;
     std::vector<std::vector<int>> L;
@@ -265,7 +265,7 @@ void pointcloud_compressor::compress_cloud()
             residual = mask*s.array();
             //std::cout << "----------\n" << mask << "\n--------" << std::endl;
             //std::cout << "----------------" << std::endl;
-            Di.setZero(sz*sz, words_max);
+            //Di.setZero(sz*sz, words_max);
             int k;
             for (k = 0; k < words_max; ++k) {
                 if (residual.squaredNorm() < proj_err) {
@@ -279,8 +279,9 @@ void pointcloud_compressor::compress_cloud()
                 temp.array().abs().maxCoeff(&ind);
                 X(k, i) = temp(ind);
                 I(k, i) = ind;
-                Di.col(k) = D.col(ind);
-                residual = mask*s.array() - mask*(Di*X.col(i)).array();
+                //Di.col(k) = D.col(ind);
+                //residual = mask*s.array() - mask*(Di*X.col(i)).array();
+                residual.array() -= X(k, i)*mask*D.col(ind).array(); // This is instead of the Di stuff
                 /*std::cout << "ind: " << ind << std::endl;
                 std::cout << "-----------" << std::endl;
                 if (std::find(L[ind].begin(), L[ind].end(), i) != L[ind].end()) {
@@ -366,16 +367,16 @@ void pointcloud_compressor::compress_cloud()
 void pointcloud_compressor::reconstruct_patches()
 {
     VectorXf s(sz*sz);
-    ArrayXXf w(sz, sz);
-    s.setZero();
     for (int i = 0; i < patches.size(); ++i) {
-        MatrixXf oldPatch = patches[i];
+        s.setZero();
         for (int k = 0; k < nbr_bases[i]; ++k) {
             s += X(k, i)*D.col(I(k, i));
         }
+        /*std::cout << s.transpose() << std::endl;
+        std::cout << VectorXf::Map(patches[i].data(), sz*sz).transpose() << std::endl;
+        std::cout << Array<bool, 1, Dynamic>::Map(masks[i].data(), sz*sz).cast<float>() << std::endl;
+        std::cout << "---------------" << std::endl;*/
         patches[i] = MatrixXf::Map(s.data(), sz, sz);
-        w = Array<bool, Dynamic, Dynamic>::Map(masks[i].data(), sz, sz).cast<float>();
-        //std::cout << w*(oldPatch - patches[i]).array() << std::endl;
     }
 }
 
