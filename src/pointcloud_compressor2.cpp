@@ -1,12 +1,10 @@
-#include "pointcloud_compressor.h"
+#include "pointcloud_compressor2.h"
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/octree/octree_impl.h>
 #include <pcl/io/pcd_io.h>
 #include <vector>
 #include <stdint.h>
 #include <boost/thread/thread.hpp>
-#include <cstdlib>
-#include <ctime>
 #include <Eigen/Dense>
 
 using namespace Eigen;
