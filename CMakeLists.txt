@@ -11,10 +11,8 @@ add_definitions(${PCL_DEFINITIONS})
 #include_directories(/usr/include/eigen3)
 
 add_library(pointcloud_compressor src/pointcloud_compressor.cpp)
-add_library(pointcloud_compressor2 src/pointcloud_compressor2.cpp)
 add_library(ksvd_decomposition src/ksvd_decomposition.cpp)
 add_executable(test src/test.cpp)
 
-target_link_libraries(pointcloud_compressor ${PCL_LIBRARIES})
-target_link_libraries(pointcloud_compressor2 ${PCL_LIBRARIES})
-target_link_libraries(test pointcloud_compressor pointcloud_viewer ${PCL_LIBRARIES})
+target_link_libraries(pointcloud_compressor ksvd_decomposition ${PCL_LIBRARIES})
+target_link_libraries(test pointcloud_compressor)
