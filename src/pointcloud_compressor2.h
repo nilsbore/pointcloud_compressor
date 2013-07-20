@@ -21,14 +21,20 @@ private:
     float end_diff;
     std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > mids;
-    std::vector<Eigen::MatrixXf, Eigen::aligned_allocator<Eigen::MatrixXf> > patches;
-    std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > reds;
+
+    //std::vector<Eigen::MatrixXf, Eigen::aligned_allocator<Eigen::MatrixXf> > patches;
+    Eigen::MatrixXf S;
+    Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> W;
+    Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> RGB;
+
+    /*std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > reds;
     std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > greens;
-    std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > blues;
-    std::vector<short> meanReds;
-    std::vector<short> meanGreens;
-    std::vector<short> meanBlues;
-    std::vector<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> > > masks;
+    std::vector<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic> > > blues;*/
+
+    std::vector<short> meanR;
+    std::vector<short> meanG;
+    std::vector<short> meanB;
+    //std::vector<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic>, Eigen::aligned_allocator<Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> > > masks;
     Eigen::MatrixXf D;
     Eigen::MatrixXf X;
     Eigen::MatrixXi I;

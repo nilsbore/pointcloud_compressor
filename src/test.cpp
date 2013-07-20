@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include "pointcloud_compressor.h"
+#include "pointcloud_compressor2.h"
 
 using namespace std;
 
