@@ -23,10 +23,12 @@ private:
 
     std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > means;
-    std::vector<float> RGB_means;
+    std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > RGB_means;
 
     Eigen::MatrixXf S;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RGB;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> R;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> G;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> B;
     Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> W;
 
     Eigen::MatrixXf D;
@@ -34,10 +36,20 @@ private:
     Eigen::MatrixXi I;
     std::vector<int> number_words;
 
-    Eigen::MatrixXf RGB_D;
-    Eigen::MatrixXf RGB_X;
-    Eigen::MatrixXi RGB_I;
-    std::vector<int> RGB_number_words;
+    Eigen::MatrixXf R_D;
+    Eigen::MatrixXf R_X;
+    Eigen::MatrixXi R_I;
+    std::vector<int> R_number_words;
+
+    Eigen::MatrixXf G_D;
+    Eigen::MatrixXf G_X;
+    Eigen::MatrixXi G_I;
+    std::vector<int> G_number_words;
+
+    Eigen::MatrixXf B_D;
+    Eigen::MatrixXf B_X;
+    Eigen::MatrixXi B_I;
+    std::vector<int> B_number_words;
 
     void compress();
     void compute_rotation(Eigen::Matrix3f& R, const Eigen::MatrixXf& points);
