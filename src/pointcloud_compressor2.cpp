@@ -10,9 +10,10 @@
 
 using namespace Eigen;
 
-pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_sz,
-                                             int words_max, float proj_err, float end_diff) :
-    cloud(new pointcloud), res(res), sz(sz), dict_sz(dict_sz), words_max(words_max), proj_err(proj_err), end_diff(end_diff)
+pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
+                                             int words_max, float proj_error, float stop_diff) :
+    cloud(new pointcloud), res(res), sz(sz), dict_size(dict_size),
+    words_max(words_max), proj_error(proj_error), stop_diff(stop_diff)
 {
     if (pcl::io::loadPCDFile<point> (filename, *cloud) == -1)
     {
@@ -23,7 +24,7 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
     compress();
 }
 
-void compress()
+void pointcloud_compressor::compress()
 {
     std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
     project_cloud();
@@ -73,12 +74,10 @@ void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points
     R.col(2) = normal.cross(R.col(1));
 }
 
-void pointcloud_compressor::project_points(Vector3f& center,
-                                           const Matrix3f& R, MatrixXf& points,
+void pointcloud_compressor::project_points(Vector3f& center, const Matrix3f& R, MatrixXf& points,
                                            const Matrix<short, Dynamic, Dynamic>& colors,
                                            const std::vector<int>& index_search,
-                                           int* occupied_indices,
-                                           int i)
+                                           int* occupied_indices, int i)
 {
     ArrayXi count(sz*sz);
     count.setZero();
@@ -103,8 +102,8 @@ void pointcloud_compressor::project_points(Vector3f& center,
         //rtn(y, x) = (current_count*rtn(y, x) + pt(0)) / (current_count + 1);
         S(ind, i) = (current_count*S(ind, i) + pt(0)) / (current_count + 1);
         c = colors.col(m);
-        for (int m = 0; m < 3; ++m) {
-            RGB(m*sz*sz + ind, i) = short((current_count*float(RGB(m*sz*sz + ind, i)) + float(c(0))) / (current_count + 1));
+        for (int n = 0; n < 3; ++n) {
+            RGB(n*sz*sz + ind, i) = short((current_count*float(RGB(n*sz*sz + ind, i)) + float(c(n))) / (current_count + 1));
         }
         count(ind) += 1;
     }
@@ -125,12 +124,18 @@ void pointcloud_compressor::project_cloud()
     std::vector<point, Eigen::aligned_allocator<point> > centers;
     octree.getOccupiedVoxelCenters(centers);
 
+    S.resize(sz*sz, centers.size());
+    W.resize(sz*sz, centers.size());
+    RGB.resize(3*sz*sz, centers.size());
+
     float radius = sqrt(3.0f)/2.0f*res; // radius of the sphere encompassing the voxels
 
     std::vector<int> index_search;
     std::vector<float> distances;
     Eigen::Matrix3f R;
     Vector3f mid;
+    rotations.resize(S.cols());
+    mids.resize(S.cols());
     int* occupied_indices = new int[cloud->width*cloud->height]();
     point center;
     for (int i = 0; i < centers.size(); ++i) {
@@ -149,16 +154,16 @@ void pointcloud_compressor::project_cloud()
         }
         compute_rotation(R, points);
         mid = Vector3f(center.x, center.y, center.z);
-        project_points(mid, R, points, colors, index_search, occupied_indices, j);
-        rotations.push_back(R); // rewrite all this shit to use arrays instead
-        mids.push_back(mid);
+        project_points(mid, R, points, colors, index_search, occupied_indices, i);
+        rotations[i] = R; // rewrite all this shit to use arrays instead
+        mids[i] = mid;
     }
     delete[] occupied_indices;
 }
 
 void pointcloud_compressor::compress_depths()
 {
-    ksvd_decomposition(X, I, D, number_words, S, W, dict_size, words_max, proj_error, stop_diff);
+    ksvd_decomposition ksvd(X, I, D, number_words, S, W, dict_size, words_max, proj_error, stop_diff);
 }
 
 void pointcloud_compressor::compress_colors()
@@ -168,14 +173,12 @@ void pointcloud_compressor::compress_colors()
 
 void pointcloud_compressor::decompress_depths()
 {
-    /*VectorXf s(sz*sz);
-    for (int i = 0; i < patches.size(); ++i) {
-        s.setZero();
-        for (int k = 0; k < nbr_bases[i]; ++k) {
-            s += X(k, i)*D.col(I(k, i));
+    for (int i = 0; i < S.cols(); ++i) {
+        S.col(i).setZero();
+        for (int k = 0; k < number_words[i]; ++k) {
+            S.col(i) += X(k, i)*D.col(I(k, i));
         }
-        patches[i] = MatrixXf::Map(s.data(), sz, sz);
-    }*/
+    }
 }
 
 void pointcloud_compressor::decompress_colors()
@@ -192,7 +195,7 @@ void pointcloud_compressor::decompress_colors()
 
 void pointcloud_compressor::reproject_cloud()
 {
-    int n = patches.size();
+    int n = S.cols();
     pointcloud::Ptr ncloud(new pointcloud);
     pcl::PointCloud<pcl::PointXYZ>::Ptr ncenters(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
@@ -207,22 +210,24 @@ void pointcloud_compressor::reproject_cloud()
     normals->points.resize(normals->width * normals->height);
     Vector3f pt;
     int counter = 0;
+    int ind;
     for (int i = 0; i < n; ++i) {
         for (int y = 0; y < sz; ++y) { // ROOM FOR SPEEDUP
             for (int x = 0; x < sz; ++x) {
-                if (!masks[i](y, x)) {
+                ind = x*sz + y;
+                if (!W(ind, i)) {
                     continue;
                 }
-                pt(0) = patches[i](y, x);
+                pt(0) = S(ind, i);
                 pt(1) = (float(x) + 0.5f)*res/float(sz) - res/2.0f;
                 pt(2) = (float(y) + 0.5f)*res/float(sz) - res/2.0f;
                 pt = rotations[i]*pt + mids[i];
                 ncloud->at(counter).x = pt(0);
                 ncloud->at(counter).y = pt(1);
                 ncloud->at(counter).z = pt(2);
-                ncloud->at(counter).r = reds[i](y, x) + meanReds[i];
-                ncloud->at(counter).g = greens[i](y, x) + meanGreens[i];
-                ncloud->at(counter).b = blues[i](y, x) + meanBlues[i];
+                ncloud->at(counter).r = RGB(ind, i); //+ meanReds[i];
+                ncloud->at(counter).g = RGB(sz*sz + ind, i); //+ meanGreens[i];
+                ncloud->at(counter).b = RGB(2*sz*sz + ind, i); //+ meanBlues[i];
                 ++counter;
             }
         }

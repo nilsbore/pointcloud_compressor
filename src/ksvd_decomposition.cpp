@@ -9,7 +9,7 @@ using namespace Eigen;
 ksvd_decomposition::ksvd_decomposition(MatrixXf& X, MatrixXi& I, MatrixXf& D, std::vector<int>& number_words,
                                        const MatrixXf& S, const Array<bool, Dynamic, Dynamic>& W,
                                        int dict_size, int words_max, float proj_error, float stop_diff) :
-    X(X), I(I), D(X), S(S), W(W), number_words(number_words),
+    X(X), I(I), D(D), S(S), W(W), number_words(number_words),
     dict_size(dict_size), words_max(words_max), proj_error(proj_error),
     stop_diff(stop_diff), l(S.rows()), n(S.cols())
 {
