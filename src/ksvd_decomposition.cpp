@@ -66,6 +66,8 @@ int ksvd_decomposition::compute_code()
             }
             weights = residual.transpose()*D;
             for (int m = 0; m < k; ++m) {
+                //X(m, i) += weights(I(m, i));
+                //residual.array() -= weights(I(m, i))*mask*D.col(I(m, i)).array();
                 weights(I(m, i)) = 0;
             }
             weights.abs().maxCoeff(&ind);

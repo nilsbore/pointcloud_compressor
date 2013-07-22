@@ -36,15 +36,14 @@ void pointcloud_compressor::compress()
     reproject_cloud();
 }
 
-void pointcloud_compressor::compute_rotation(Matrix3f& rot, const MatrixXf& points)
+void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points)
 {
     if (points.cols() < 4) {
-        rot.setIdentity();
+        R.setIdentity();
         return;
     }
     JacobiSVD<MatrixXf> svd(points.transpose(), ComputeThinV); // kan ta U ist för transpose?
-    Vector3f normal;
-    normal << svd.matrixV().block<3, 1>(0, 3);
+    Vector3f normal = svd.matrixV().block<3, 1>(0, 3);
     normal.normalize();
     Vector3f x(1.0f, 0.0f, 0.0f);
     Vector3f y(0.0f, 1.0f, 0.0f);
@@ -53,28 +52,28 @@ void pointcloud_compressor::compute_rotation(Matrix3f& rot, const MatrixXf& poin
         if (normal(0) < 0) {
             normal *= -1;
         }
-        rot.col(0) = normal;
-        rot.col(1) = z.cross(normal);
+        R.col(0) = normal;
+        R.col(1) = z.cross(normal);
     }
     else if (fabs(normal(1)) > fabs(normal(0)) && fabs(normal(1)) > fabs(normal(2))) { // pointing in y dir
         if (normal(1) < 0) {
             normal *= -1;
         }
-        rot.col(0) = normal;
-        rot.col(1) = x.cross(normal);
+        R.col(0) = normal;
+        R.col(1) = x.cross(normal);
     }
     else { // pointing in z dir
         if (normal(2) < 0) {
             normal *= -1;
         }
-        rot.col(0) = normal;
-        rot.col(1) = y.cross(normal);
+        R.col(0) = normal;
+        R.col(1) = y.cross(normal);
     }
-    rot.col(1).normalize();
-    rot.col(2) = normal.cross(rot.col(1));
+    R.col(1).normalize();
+    R.col(2) = normal.cross(R.col(1));
 }
 
-void pointcloud_compressor::project_points(Vector3f& center, const Matrix3f& rot, MatrixXf& points,
+void pointcloud_compressor::project_points(Vector3f& center, const Matrix3f& R, MatrixXf& points,
                                            const Matrix<short, Dynamic, Dynamic>& colors,
                                            const std::vector<int>& index_search,
                                            int* occupied_indices, int i)
@@ -88,7 +87,7 @@ void pointcloud_compressor::project_points(Vector3f& center, const Matrix3f& rot
         if (occupied_indices[index_search[m]]) {
             continue;
         }
-        pt = rot.transpose()*(points.block<3, 1>(0, m) - center);
+        pt = R.transpose()*(points.block<3, 1>(0, m) - center);
         pt(1) += res/2.0f;
         pt(2) += res/2.0f;
         if (pt(1) > res || pt(1) < 0 || pt(2) > res || pt(2) < 0) {
@@ -101,23 +100,22 @@ void pointcloud_compressor::project_points(Vector3f& center, const Matrix3f& rot
         float current_count = count(ind);
         S(ind, i) = (current_count*S(ind, i) + pt(0)) / (current_count + 1);
         c = colors.col(m);
-        R(ind, i) = (current_count*R(ind, i) + float(c(0))) / (current_count + 1);
-        G(ind, i) = (current_count*R(ind, i) + float(c(1))) / (current_count + 1);
-        B(ind, i) = (current_count*R(ind, i) + float(c(2))) / (current_count + 1);
+        for (int n = 0; n < 3; ++n) {
+            RGB(ind, n*S.cols() + i) = (current_count*RGB(ind, n*S.cols() + i) + float(c(n))) / (current_count + 1);
+        }
         count(ind) += 1;
     }
-
     float mn = S.col(i).mean();
     S.col(i).array() -= mn;
-    center += mn*rot.col(0); // should this be minus??
-    mn = R.col(i).mean();
-    R.col(i).array() -= mn;
+    center += mn*R.col(0); // should this be minus??
+    mn = RGB.col(i).mean();
+    RGB.col(i).array() -= mn;
     RGB_means[i](0) = mn;
-    mn = G.col(i).mean();
-    G.col(i).array() -= mn;
+    mn = RGB.col(S.cols() + i).mean();
+    RGB.col(S.cols() + i).array() -= mn;
     RGB_means[i](1) = mn;
-    mn = B.col(i).mean();
-    B.col(i).array() -= mn;
+    mn = RGB.col(2*S.cols() + i).mean();
+    RGB.col(2*S.cols() + i).array() -= mn;
     RGB_means[i](2) = mn;
     W.col(i) = count > 0;
     //S.col(j).array() *= isSet.cast<float>(); // this is mostly for debugging
@@ -134,9 +132,8 @@ void pointcloud_compressor::project_cloud()
 
     S.resize(sz*sz, centers.size());
     W.resize(sz*sz, centers.size());
-    R.resize(sz*sz, centers.size());
-    G.resize(sz*sz, centers.size());
-    B.resize(sz*sz, centers.size());
+    //RGB.resize(3*sz*sz, centers.size());
+    RGB.resize(sz*sz, 3*centers.size());
     rotations.resize(centers.size());
     means.resize(centers.size());
     RGB_means.resize(centers.size());
@@ -145,7 +142,7 @@ void pointcloud_compressor::project_cloud()
 
     std::vector<int> index_search;
     std::vector<float> distances;
-    Eigen::Matrix3f rot;
+    Eigen::Matrix3f R;
     Vector3f mid;
     int* occupied_indices = new int[cloud->width*cloud->height]();
     point center;
@@ -163,10 +160,10 @@ void pointcloud_compressor::project_cloud()
             colors(1, m) = cloud->points[index_search[m]].g;
             colors(2, m) = cloud->points[index_search[m]].b;
         }
-        compute_rotation(rot, points);
+        compute_rotation(R, points);
         mid = Vector3f(center.x, center.y, center.z);
-        project_points(mid, rot, points, colors, index_search, occupied_indices, i);
-        rotations[i] = rot; // rewrite all this shit to use arrays instead
+        project_points(mid, R, points, colors, index_search, occupied_indices, i);
+        rotations[i] = R; // rewrite all this shit to use arrays instead
         means[i] = mid;
     }
     delete[] occupied_indices;
@@ -179,15 +176,11 @@ void pointcloud_compressor::compress_depths()
 
 void pointcloud_compressor::compress_colors()
 {
-    {
-        ksvd_decomposition ksvd(R_X, R_I, R_D, R_number_words, R, W, dict_size, 300, 1e3f, 1000);
+    Matrix<bool, Dynamic, Dynamic> RGB_W(sz*sz, RGB.cols());
+    for (int n = 0; n < 3; ++n) {
+        RGB_W.block(0, n*S.cols(), sz*sz, S.cols()) = W;
     }
-    {
-        ksvd_decomposition ksvd(G_X, G_I, G_D, G_number_words, G, W, dict_size, 300, 1e3f, 1000);
-    }
-    {
-        ksvd_decomposition ksvd(B_X, B_I, B_D, B_number_words, B, W, dict_size, 300, 1e3f, 1000);
-    }
+    ksvd_decomposition(RGB_X, RGB_I, RGB_D, RGB_number_words, RGB, RGB_W, 200, 20, 1e3f, 1e2f);
 }
 
 void pointcloud_compressor::decompress_depths()
@@ -202,18 +195,10 @@ void pointcloud_compressor::decompress_depths()
 
 void pointcloud_compressor::decompress_colors()
 {
-    for (int i = 0; i < S.cols(); ++i) {
-        R.col(i).setZero();
-        G.col(i).setZero();
-        B.col(i).setZero();
-        for (int k = 0; k < R_number_words[i]; ++k) {
-            R.col(i) += R_X(k, i)*R_D.col(R_I(k, i));
-        }
-        for (int k = 0; k < G_number_words[i]; ++k) {
-            G.col(i) += G_X(k, i)*G_D.col(G_I(k, i));
-        }
-        for (int k = 0; k < B_number_words[i]; ++k) {
-            B.col(i) += B_X(k, i)*B_D.col(B_I(k, i));
+    for (int i = 0; i < RGB.cols(); ++i) {
+        RGB.col(i).setZero();
+        for (int k = 0; k < RGB_number_words[i]; ++k) {
+            RGB.col(i) += RGB_X(k, i)*RGB_D.col(RGB_I(k, i));
         }
     }
 }
@@ -250,9 +235,9 @@ void pointcloud_compressor::reproject_cloud()
                 ncloud->at(counter).x = pt(0);
                 ncloud->at(counter).y = pt(1);
                 ncloud->at(counter).z = pt(2);
-                ncloud->at(counter).r = short(RGB_means[i](0) + R(ind, i));
-                ncloud->at(counter).g = short(RGB_means[i](1) + G(ind, i));
-                ncloud->at(counter).b = short(RGB_means[i](2) + B(ind, i));
+                ncloud->at(counter).r = short(RGB_means[i](0) + RGB(ind, i));
+                ncloud->at(counter).g = short(RGB_means[i](1) + RGB(ind, S.cols() + i));
+                ncloud->at(counter).b = short(RGB_means[i](2) + RGB(ind, 2*S.cols() + i));
                 ++counter;
             }
         }
@@ -294,4 +279,14 @@ void pointcloud_compressor::display_cloud(pointcloud::Ptr display_cloud,
         viewer->spinOnce (100);
         boost::this_thread::sleep (boost::posix_time::microseconds (100000));
     }
+}
+
+void pointcloud_compressor::write_to_file(const std::string& file)
+{
+
+}
+
+void pointcloud_compressor::read_from_file(const std::string& file)
+{
+
 }

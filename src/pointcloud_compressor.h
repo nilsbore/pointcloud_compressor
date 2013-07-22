@@ -26,9 +26,7 @@ private:
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > RGB_means;
 
     Eigen::MatrixXf S;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> R;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> G;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> B;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RGB;
     Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> W;
 
     Eigen::MatrixXf D;
@@ -36,20 +34,10 @@ private:
     Eigen::MatrixXi I;
     std::vector<int> number_words;
 
-    Eigen::MatrixXf R_D;
-    Eigen::MatrixXf R_X;
-    Eigen::MatrixXi R_I;
-    std::vector<int> R_number_words;
-
-    Eigen::MatrixXf G_D;
-    Eigen::MatrixXf G_X;
-    Eigen::MatrixXi G_I;
-    std::vector<int> G_number_words;
-
-    Eigen::MatrixXf B_D;
-    Eigen::MatrixXf B_X;
-    Eigen::MatrixXi B_I;
-    std::vector<int> B_number_words;
+    Eigen::MatrixXf RGB_D;
+    Eigen::MatrixXf RGB_X;
+    Eigen::MatrixXi RGB_I;
+    std::vector<int> RGB_number_words;
 
     void compress();
     void compute_rotation(Eigen::Matrix3f& R, const Eigen::MatrixXf& points);
@@ -65,6 +53,8 @@ private:
     void display_cloud(pointcloud::Ptr display_cloud,
                        pcl::PointCloud<pcl::PointXYZ>::Ptr display_centers,
                        pcl::PointCloud<pcl::Normal>::Ptr display_normals);
+    void write_to_file(const std::string& file);
+    void read_from_file(const std::string& file);
 public:
     pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
                           int words_max, float proj_error, float stop_diff);
