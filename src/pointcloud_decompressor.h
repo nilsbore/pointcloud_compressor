@@ -12,8 +12,6 @@ public:
     typedef pcl::PointXYZRGB point;
     typedef pcl::PointCloud<point> pointcloud;
 private:
-    pointcloud::Ptr cloud;
-
     float res;
     int sz;
     int dict_size;
