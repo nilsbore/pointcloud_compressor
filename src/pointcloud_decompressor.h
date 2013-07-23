@@ -19,7 +19,8 @@ private:
     int words_max;
     int RGB_words_max;
 
-    std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
+    //std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
+    std::vector<Eigen::Quaternionf, Eigen::aligned_allocator<Eigen::Quaternionf> > rotations;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > means;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > RGB_means;
 

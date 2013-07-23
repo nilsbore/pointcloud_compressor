@@ -7,8 +7,8 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-    if (true) {
-        pointcloud_compressor comp("../data/office1.pcd");//, 0.1f, 10, 100, 10, 1e-3f, 1e-5f);
+    if (false) {
+        pointcloud_compressor comp("../data/office1.pcd");
         comp.save_compressed("test");
     }
     else {

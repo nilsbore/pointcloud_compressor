@@ -69,7 +69,7 @@ void pointcloud_decompressor::reproject_cloud()
                 pt(0) = S(ind, i);
                 pt(1) = (float(x) + 0.5f)*res/float(sz) - res/2.0f;
                 pt(2) = (float(y) + 0.5f)*res/float(sz) - res/2.0f;
-                pt = rotations[i]*pt + means[i];
+                pt = rotations[i].toRotationMatrix() *pt + means[i];
                 ncloud->at(counter).x = pt(0);
                 ncloud->at(counter).y = pt(1);
                 ncloud->at(counter).z = pt(2);
@@ -82,9 +82,9 @@ void pointcloud_decompressor::reproject_cloud()
         ncenters->at(i).x = means[i](0);
         ncenters->at(i).y = means[i](1);
         ncenters->at(i).z = means[i](2);
-        normals->at(i).normal_x = rotations[i](0, 0);
-        normals->at(i).normal_y = rotations[i](1, 0);
-        normals->at(i).normal_z = rotations[i](2, 0);
+        normals->at(i).normal_x = rotations[i].toRotationMatrix()(0, 0);
+        normals->at(i).normal_y = rotations[i].toRotationMatrix()(1, 0);
+        normals->at(i).normal_z = rotations[i].toRotationMatrix()(2, 0);
     }
     ncloud->resize(counter);
     std::cout << "Size of transformed point cloud: " << ncloud->width*ncloud->height << std::endl;
@@ -188,12 +188,18 @@ void pointcloud_decompressor::read_from_file(const std::string& file)
             means[i](n) = value;
         }
     }
-    for (int i = 0; i < S.cols(); ++i) { // rotations of patches
+    /*for (int i = 0; i < S.cols(); ++i) { // rotations of patches
         for (int m = 0; m < 3; ++m) {
             for (int n = 0; n < 3; ++n) {
                 code_file.read((char*)&value, sizeof(float));
                 rotations[i](m, n) = value;
             }
+        }
+    }*/
+    for (int i = 0; i < S.cols(); ++i) { // rotations of patches
+        for (int n = 0; n < 4; ++n) {
+            code_file.read((char*)&value, sizeof(float));
+            rotations[i].coeffs()(n) = value;
         }
     }
     u_char words;

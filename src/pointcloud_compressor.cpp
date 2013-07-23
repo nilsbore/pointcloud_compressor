@@ -162,7 +162,9 @@ void pointcloud_compressor::project_cloud()
         compute_rotation(R, points);
         mid = Vector3f(center.x, center.y, center.z);
         project_points(mid, R, points, colors, index_search, occupied_indices, i);
-        rotations[i] = R; // rewrite all this shit to use arrays instead
+        //rotations[i] = R; // rewrite all this shit to use arrays instead
+        //Quaternionf Q = R;
+        rotations[i] = R;
         means[i] = mid;
     }
     delete[] occupied_indices;
@@ -240,14 +242,20 @@ void pointcloud_compressor::write_to_file(const std::string& file)
             code_file.write((char*)&value, sizeof(float));
         }
     }
-    for (int i = 0; i < S.cols(); ++i) { // rotations of patches
+    /*for (int i = 0; i < S.cols(); ++i) { // rotations of patches
         for (int m = 0; m < 3; ++m) {
             for (int n = 0; n < 3; ++n) {
                 value = rotations[i](m, n);
                 code_file.write((char*)&value, sizeof(float));
             }
         }
-    }
+    }*/
+    for (int i = 0; i < S.cols(); ++i) { // BEGIN TEST
+        for (int n = 0; n < 4; ++n) {
+            value = rotations[i].coeffs()(n);
+            code_file.write((char*)&value, sizeof(float));
+        }
+    } // END TEST
     u_char words;
     for (int i = 0; i < S.cols(); ++i) { // number of words and codes
         words = number_words[i];
