@@ -17,7 +17,9 @@ private:
     float res;
     int sz;
     int dict_size;
+    int RGB_dict_size;
     int words_max;
+    int RGB_words_max;
     float proj_error;
     float stop_diff;
 
@@ -53,6 +55,11 @@ private:
     void display_cloud(pointcloud::Ptr display_cloud,
                        pcl::PointCloud<pcl::PointXYZ>::Ptr display_centers,
                        pcl::PointCloud<pcl::Normal>::Ptr display_normals);
+    void write_bool(std::ofstream& o, u_char& buffer, int& b, bool bit);
+    bool read_bool(std::ifstream& i, u_char& buffer, int& b);
+    void close_write_bools(std::ofstream& o, u_char& buffer);
+    void write_dict_file(const Eigen::MatrixXf& dict, const std::string& file);
+    void read_dict_file(Eigen::MatrixXf& dict, const std::string& file);
     void write_to_file(const std::string& file);
     void read_from_file(const std::string& file);
 public:
