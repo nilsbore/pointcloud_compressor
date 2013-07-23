@@ -27,25 +27,20 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
 
 void pointcloud_compressor::save_compressed(const std::string& name)
 {
-    compress();
+    std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
+    project_cloud();
+    std::cout << "Number of patches: " << S.cols() << std::endl;
+    compress_depths();
+    compress_colors();
     write_to_file(name);
 }
 
-void pointcloud_compressor::open_compressed(const std::string& name)
+void pointcloud_compressor::load_compressed(const std::string& name)
 {
     read_from_file(name);
     decompress_depths();
     decompress_colors();
     reproject_cloud();
-}
-
-void pointcloud_compressor::compress()
-{
-    std::cout << "Size of original point cloud: " << cloud->width*cloud->height << std::endl;
-    project_cloud();
-    std::cout << "Number of patches: " << S.cols() << std::endl;
-    compress_depths();
-    compress_colors(); 
 }
 
 void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points)

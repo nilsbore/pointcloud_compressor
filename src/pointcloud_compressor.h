@@ -41,7 +41,6 @@ private:
     Eigen::MatrixXi RGB_I;
     std::vector<int> RGB_number_words;
 
-    void compress();
     void compute_rotation(Eigen::Matrix3f& R, const Eigen::MatrixXf& points);
     void project_points(Eigen::Vector3f& center, const Eigen::Matrix3f& R, Eigen::MatrixXf& points,
                         const Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic>& colors,
@@ -66,7 +65,7 @@ public:
     pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
                           int words_max, float proj_error, float stop_diff);
     void save_compressed(const std::string& name);
-    void open_compressed(const std::string& name);
+    void load_compressed(const std::string& name);
 };
 
 #endif // POINTCLOUD_COMPRESSOR_H
