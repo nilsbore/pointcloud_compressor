@@ -23,8 +23,20 @@ pointcloud_compressor::pointcloud_compressor(const std::string& filename, float 
       PCL_ERROR("Couldn't read file room_scan2.pcd \n");
       return;
     }
+}
 
+void pointcloud_compressor::save_compressed(const std::string& name)
+{
     compress();
+    write_to_file(name);
+}
+
+void pointcloud_compressor::open_compressed(const std::string& name)
+{
+    read_from_file(name);
+    decompress_depths();
+    decompress_colors();
+    reproject_cloud();
 }
 
 void pointcloud_compressor::compress()
@@ -33,12 +45,7 @@ void pointcloud_compressor::compress()
     project_cloud();
     std::cout << "Number of patches: " << S.cols() << std::endl;
     compress_depths();
-    compress_colors();
-    decompress_depths();
-    decompress_colors();
-    reproject_cloud();
-    write_to_file(std::string("test"));
-    read_from_file(std::string("test"));
+    compress_colors(); 
 }
 
 void pointcloud_compressor::compute_rotation(Matrix3f& R, const MatrixXf& points)
@@ -520,13 +527,9 @@ void pointcloud_compressor::read_from_file(const std::string& file)
     u_char buffer = 0;
     int b = 0;
     for (int i = 0; i < S.cols(); ++i) { // masks of patches
-        Array<bool, Dynamic, Dynamic> old = W.col(i);
         for (int n = 0; n < sz*sz; ++n) {
             W(n, i) = read_bool(code_file, buffer, b);
         }
-        std::cout << "---------------------" << std::endl;
-        std::cout << W.col(i).transpose() << std::endl;
-        std::cout << old.transpose() << std::endl;
     }
     code_file.close();
 }

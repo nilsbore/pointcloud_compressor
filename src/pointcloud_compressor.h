@@ -65,6 +65,8 @@ private:
 public:
     pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
                           int words_max, float proj_error, float stop_diff);
+    void save_compressed(const std::string& name);
+    void open_compressed(const std::string& name);
 };
 
 #endif // POINTCLOUD_COMPRESSOR_H
