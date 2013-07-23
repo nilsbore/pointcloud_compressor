@@ -21,7 +21,9 @@ private:
     int words_max;
     int RGB_words_max;
     float proj_error;
+    float RGB_proj_error;
     float stop_diff;
+    float RGB_stop_diff;
 
     std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
     std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > means;
@@ -53,8 +55,9 @@ private:
     void write_dict_file(const Eigen::MatrixXf& dict, const std::string& file);
     void write_to_file(const std::string& file);
 public:
-    pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
-                          int words_max, float proj_error, float stop_diff);
+    pointcloud_compressor(const std::string& filename, float res = 0.1f, int sz = 10, int dict_size = 100,
+                          int words_max = 10, float proj_error = 1e-3f, float stop_diff = 1e-5f, int RGB_dict_size = 200,
+                          int RGB_words_max = 20, float RGB_proj_error = 1e3f, float RGB_stop_diff = 1e2f);
     void save_compressed(const std::string& name);
 };
 

@@ -12,9 +12,11 @@
 using namespace Eigen;
 
 pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
-                                             int words_max, float proj_error, float stop_diff) :
-    cloud(new pointcloud), res(res), sz(sz), dict_size(dict_size), RGB_dict_size(200),
-    words_max(words_max), RGB_words_max(20), proj_error(proj_error), stop_diff(stop_diff)
+                                             int words_max, float proj_error, float stop_diff, int RGB_dict_size,
+                                             int RGB_words_max, float RGB_proj_error, float RGB_stop_diff) :
+    cloud(new pointcloud), res(res), sz(sz), dict_size(dict_size), RGB_dict_size(RGB_dict_size),
+    words_max(words_max), RGB_words_max(RGB_words_max), proj_error(proj_error), RGB_proj_error(RGB_proj_error),
+    stop_diff(stop_diff), RGB_stop_diff(RGB_stop_diff)
 {
     if (pcl::io::loadPCDFile<point> (filename, *cloud) == -1)
     {
@@ -178,7 +180,7 @@ void pointcloud_compressor::compress_colors()
         RGB_W.block(0, n*S.cols(), sz*sz, S.cols()) = W;
     }
     ksvd_decomposition(RGB_X, RGB_I, RGB_D, RGB_number_words, RGB,
-                       RGB_W, RGB_dict_size, RGB_words_max, 1e3f, 1e6f);
+                       RGB_W, RGB_dict_size, RGB_words_max, RGB_proj_error, RGB_stop_diff); // 1e3, 1e2
 }
 
 void pointcloud_compressor::write_dict_file(const MatrixXf& dict, const std::string& file)
