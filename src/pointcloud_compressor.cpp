@@ -324,7 +324,7 @@ void pointcloud_compressor::read_dict_file(MatrixXf& dict, const std::string& fi
 
 void pointcloud_compressor::write_bool(std::ofstream& o, u_char& buffer, int& b, bool bit)
 {
-    if (b == 0 || b == 8) {
+    if (b == 8) {
         o.write((char*)&buffer, sizeof(u_char));
         buffer = 0;
         b = 0;
