@@ -211,10 +211,10 @@ void pointcloud_decompressor::read_from_file(const std::string& file)
             X(n, i) = value;
         }
     }
-    u_char word;
+    uint16_t word;
     for (int i = 0; i < S.cols(); ++i) { // dictionary entries used
         for (int n = 0; n < number_words[i]; ++n) {
-            code_file.read((char*)&word, sizeof(u_char));
+            code_file.read((char*)&word, sizeof(uint16_t));
             /*std::cout << I.col(i).transpose() << std::endl;
             std::cout << I.row(n) << std::endl;
             std::cout << n << " " << i << " " << I.rows() << " " << I.cols() << " " << number_words[i] << std::endl;*/
@@ -237,7 +237,7 @@ void pointcloud_decompressor::read_from_file(const std::string& file)
     }
     for (int i = 0; i < 3*S.cols(); ++i) { // rgb dictionary entries used
         for (int n = 0; n < RGB_number_words[i]; ++n) {
-            code_file.read((char*)&word, sizeof(u_char));
+            code_file.read((char*)&word, sizeof(uint16_t));
             RGB_I(n, i) = word;
         }
         //std::cout << RGB_I(0, i) << " " << RGB_I(0, i+1) << std::endl;

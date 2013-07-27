@@ -265,11 +265,11 @@ void pointcloud_compressor::write_to_file(const std::string& file)
             code_file.write((char*)&value, sizeof(float));
         }
     }
-    u_char word;
+    uint16_t word;
     for (int i = 0; i < S.cols(); ++i) { // dictionary entries used
         for (int n = 0; n < number_words[i]; ++n) {
             word = I(n, i);
-            code_file.write((char*)&word, sizeof(u_char));
+            code_file.write((char*)&word, sizeof(uint16_t));
         }
     }
     for (int i = 0; i < S.cols(); ++i) { // rgb means of patches
@@ -289,7 +289,7 @@ void pointcloud_compressor::write_to_file(const std::string& file)
     for (int i = 0; i < 3*S.cols(); ++i) { // rgb dictionary entries used
         for (int n = 0; n < RGB_number_words[i]; ++n) {
             word = RGB_I(n, i);
-            code_file.write((char*)&word, sizeof(u_char));
+            code_file.write((char*)&word, sizeof(uint16_t));
         }
     }
     u_char buffer = 0;
