@@ -224,7 +224,7 @@ void pointcloud_compressor::write_to_file(const std::string& file)
     write_dict_file(RGB_D, rgbfile);
     std::string depthfile = file + "depth.pcdict";
     write_dict_file(D, depthfile);
-    std::string code = file + ".pcdcode";
+    std::string code = file + ".pccode";
 
     std::ofstream code_file(code, std::ios::binary | std::ios::trunc);
     int nbr = S.cols();

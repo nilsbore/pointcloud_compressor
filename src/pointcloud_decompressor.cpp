@@ -154,7 +154,7 @@ void pointcloud_decompressor::read_from_file(const std::string& file)
     read_dict_file(RGB_D, rgbfile);
     std::string depthfile = file + "depth.pcdict";
     read_dict_file(D, depthfile);
-    std::string code = file + ".pcdcode";
+    std::string code = file + ".pccode";
 
     std::ifstream code_file(code, std::ios::binary);
     int nbr;
