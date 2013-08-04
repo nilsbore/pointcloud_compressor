@@ -13,12 +13,12 @@ public:
     typedef pcl::PointXYZRGB point;
     typedef pcl::PointCloud<point> pointcloud;
 private:
-    pointcloud::Ptr cloud;
+    pointcloud::Ptr cloud; // the input pointcloud with RGB color information
 
-    float proj_error;
-    float RGB_proj_error;
-    float stop_diff;
-    float RGB_stop_diff;
+    float proj_error; // the error at which the orthogonal matching pursuit stops in ksvd
+    float RGB_proj_error; // the error at which the orthogonal matching pursuit stops in ksvd
+    float stop_diff; // the difference between iteration errors at which ksvd terminates
+    float RGB_stop_diff; // the difference between iteration errors at which ksvd terminates
 
     void compute_rotation(Eigen::Matrix3f& R, const Eigen::MatrixXf& points);
     void project_points(Eigen::Vector3f& center, const Eigen::Matrix3f& R, Eigen::MatrixXf& points,

@@ -7,8 +7,8 @@ dictionary_representation::dictionary_representation()
 
 }
 
-dictionary_representation::dictionary_representation(float res, int sz, int dict_size, int words_max,
-                          int RGB_dict_size, int RGB_words_max) :
+dictionary_representation::dictionary_representation(float res, int sz,int dict_size, int words_max,
+                                                     int RGB_dict_size, int RGB_words_max) :
     res(res), sz(sz), dict_size(dict_size), words_max(words_max),
     RGB_dict_size(RGB_dict_size), RGB_words_max(RGB_words_max)
 {
@@ -104,9 +104,6 @@ void dictionary_representation::read_from_file(const std::string& file)
     for (int i = 0; i < S.cols(); ++i) { // dictionary entries used
         for (int n = 0; n < number_words[i]; ++n) {
             code_file.read((char*)&word, sizeof(uint16_t));
-            /*std::cout << I.col(i).transpose() << std::endl;
-            std::cout << I.row(n) << std::endl;
-            std::cout << n << " " << i << " " << I.rows() << " " << I.cols() << " " << number_words[i] << std::endl;*/
             I(n, i) = int(word);
         }
     }
@@ -129,8 +126,6 @@ void dictionary_representation::read_from_file(const std::string& file)
             code_file.read((char*)&word, sizeof(uint16_t));
             RGB_I(n, i) = word;
         }
-        //std::cout << RGB_I(0, i) << " " << RGB_I(0, i+1) << std::endl;
-        //std::cout << "-----------" << std::endl;
     }
     u_char buffer = 0;
     int b = 0;
