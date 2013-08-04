@@ -7,15 +7,14 @@
 #include <pcl/io/pcd_io.h>
 #include <stdint.h>
 #include <boost/thread/thread.hpp>
-#include <fstream>
 
 using namespace Eigen;
 
 pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
                                              int words_max, float proj_error, float stop_diff, int RGB_dict_size,
                                              int RGB_words_max, float RGB_proj_error, float RGB_stop_diff) :
-    cloud(new pointcloud), res(res), sz(sz), dict_size(dict_size), RGB_dict_size(RGB_dict_size),
-    words_max(words_max), RGB_words_max(RGB_words_max), proj_error(proj_error), RGB_proj_error(RGB_proj_error),
+    dictionary_representation(res, sz, dict_size, words_max, RGB_dict_size, RGB_words_max),
+    cloud(new pointcloud), proj_error(proj_error), RGB_proj_error(RGB_proj_error),
     stop_diff(stop_diff), RGB_stop_diff(RGB_stop_diff)
 {
     if (pcl::io::loadPCDFile<point> (filename, *cloud) == -1)
@@ -183,122 +182,4 @@ void pointcloud_compressor::compress_colors()
     }
     ksvd_decomposition(RGB_X, RGB_I, RGB_D, RGB_number_words, RGB,
                        RGB_W, RGB_dict_size, RGB_words_max, RGB_proj_error, RGB_stop_diff); // 1e3, 1e2
-}
-
-void pointcloud_compressor::write_dict_file(const MatrixXf& dict, const std::string& file)
-{
-    std::ofstream dict_file(file, std::ios::binary | std::ios::trunc);
-    int cols = dict.cols();
-    int rows = dict.rows();
-    dict_file.write((char*)&cols, sizeof(int));
-    dict_file.write((char*)&rows, sizeof(int));
-    float value;
-    for (int j = 0; j < dict.cols(); ++j) {
-        for (int n = 0; n < dict.rows(); ++n) {
-            value = dict(n, j);
-            dict_file.write((char*)&value, sizeof(float));
-        }
-    }
-    dict_file.close();
-}
-
-void pointcloud_compressor::write_bool(std::ofstream& o, u_char& buffer, int& b, bool bit)
-{
-    if (b == 8) {
-        o.write((char*)&buffer, sizeof(u_char));
-        buffer = 0;
-        b = 0;
-    }
-    buffer |= u_char(bit) << b;
-    b++;
-}
-
-void pointcloud_compressor::close_write_bools(std::ofstream& o, u_char& buffer)
-{
-    o.write((char*)&buffer, sizeof(u_char));
-}
-
-void pointcloud_compressor::write_to_file(const std::string& file)
-{
-    std::string rgbfile = file + "rgb.pcdict";
-    write_dict_file(RGB_D, rgbfile);
-    std::string depthfile = file + "depth.pcdict";
-    write_dict_file(D, depthfile);
-    std::string code = file + ".pccode";
-
-    std::ofstream code_file(code, std::ios::binary | std::ios::trunc);
-    int nbr = S.cols();
-    code_file.write((char*)&nbr, sizeof(int)); // number of patches
-    code_file.write((char*)&sz, sizeof(int));
-    code_file.write((char*)&words_max, sizeof(int));
-    code_file.write((char*)&RGB_words_max, sizeof(int));
-    code_file.write((char*)&dict_size, sizeof(int)); // dictionary size
-    code_file.write((char*)&RGB_dict_size, sizeof(int)); // RGB dictionary size
-    code_file.write((char*)&res, sizeof(float)); // size of voxels
-    float value;
-    for (int i = 0; i < S.cols(); ++i) { // means of patches
-        for (int n = 0; n < 3; ++n) {
-            value = means[i](n);
-            code_file.write((char*)&value, sizeof(float));
-        }
-    }
-    /*for (int i = 0; i < S.cols(); ++i) { // rotations of patches
-        for (int m = 0; m < 3; ++m) {
-            for (int n = 0; n < 3; ++n) {
-                value = rotations[i](m, n);
-                code_file.write((char*)&value, sizeof(float));
-            }
-        }
-    }*/
-    for (int i = 0; i < S.cols(); ++i) { // BEGIN TEST
-        for (int n = 0; n < 4; ++n) {
-            value = rotations[i].coeffs()(n);
-            code_file.write((char*)&value, sizeof(float));
-        }
-    } // END TEST
-    u_char words;
-    for (int i = 0; i < S.cols(); ++i) { // number of words and codes
-        words = number_words[i];
-        code_file.write((char*)&words, sizeof(u_char));
-        for (int n = 0; n < words; ++n) {
-            value = X(n, i);
-            code_file.write((char*)&value, sizeof(float));
-        }
-    }
-    uint16_t word;
-    for (int i = 0; i < S.cols(); ++i) { // dictionary entries used
-        for (int n = 0; n < number_words[i]; ++n) {
-            word = I(n, i);
-            code_file.write((char*)&word, sizeof(uint16_t));
-        }
-    }
-    for (int i = 0; i < S.cols(); ++i) { // rgb means of patches
-        for (int n = 0; n < 3; ++n) {
-            value = RGB_means[i](n);
-            code_file.write((char*)&value, sizeof(float));
-        }
-    }
-    for (int i = 0; i < 3*S.cols(); ++i) { // rgb number of words and codes
-        words = RGB_number_words[i];
-        code_file.write((char*)&words, sizeof(u_char));
-        for (int n = 0; n < words; ++n) {
-            value = RGB_X(n, i);
-            code_file.write((char*)&value, sizeof(float));
-        }
-    }
-    for (int i = 0; i < 3*S.cols(); ++i) { // rgb dictionary entries used
-        for (int n = 0; n < RGB_number_words[i]; ++n) {
-            word = RGB_I(n, i);
-            code_file.write((char*)&word, sizeof(uint16_t));
-        }
-    }
-    u_char buffer = 0;
-    int b = 0;
-    for (int i = 0; i < S.cols(); ++i) { // masks of patches
-        for (int n = 0; n < sz*sz; ++n) {
-            write_bool(code_file, buffer, b, W(n, i));
-        }
-    }
-    close_write_bools(code_file, buffer);
-    code_file.close();
 }

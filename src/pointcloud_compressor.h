@@ -1,12 +1,13 @@
 #ifndef POINTCLOUD_COMPRESSOR_H
 #define POINTCLOUD_COMPRESSOR_H
 
+#include "dictionary_representation.h"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <string>
 #include <vector>
 
-class pointcloud_compressor
+class pointcloud_compressor : public dictionary_representation
 {
 public:
     typedef pcl::PointXYZRGB point;
@@ -14,35 +15,10 @@ public:
 private:
     pointcloud::Ptr cloud;
 
-    float res;
-    int sz;
-    int dict_size;
-    int RGB_dict_size;
-    int words_max;
-    int RGB_words_max;
     float proj_error;
     float RGB_proj_error;
     float stop_diff;
     float RGB_stop_diff;
-
-    //std::vector<Eigen::Matrix3f, Eigen::aligned_allocator<Eigen::Matrix3f> > rotations;
-    std::vector<Eigen::Quaternionf, Eigen::aligned_allocator<Eigen::Quaternionf> > rotations;
-    std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > means;
-    std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f> > RGB_means;
-
-    Eigen::MatrixXf S;
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RGB;
-    Eigen::Array<bool, Eigen::Dynamic, Eigen::Dynamic> W;
-
-    Eigen::MatrixXf D;
-    Eigen::MatrixXf X;
-    Eigen::MatrixXi I;
-    std::vector<int> number_words;
-
-    Eigen::MatrixXf RGB_D;
-    Eigen::MatrixXf RGB_X;
-    Eigen::MatrixXi RGB_I;
-    std::vector<int> RGB_number_words;
 
     void compute_rotation(Eigen::Matrix3f& R, const Eigen::MatrixXf& points);
     void project_points(Eigen::Vector3f& center, const Eigen::Matrix3f& R, Eigen::MatrixXf& points,
@@ -51,10 +27,6 @@ private:
     void project_cloud();
     void compress_depths();
     void compress_colors();
-    void write_bool(std::ofstream& o, u_char& buffer, int& b, bool bit);
-    void close_write_bools(std::ofstream& o, u_char& buffer);
-    void write_dict_file(const Eigen::MatrixXf& dict, const std::string& file);
-    void write_to_file(const std::string& file);
 public:
     pointcloud_compressor(const std::string& filename, float res = 0.1f, int sz = 10, int dict_size = 100,
                           int words_max = 10, float proj_error = 1e-3f, float stop_diff = 1e-5f, int RGB_dict_size = 200,

@@ -4,11 +4,10 @@
 #include <pcl/io/pcd_io.h>
 #include <stdint.h>
 #include <boost/thread/thread.hpp>
-#include <fstream>
 
 using namespace Eigen;
 
-pointcloud_decompressor::pointcloud_decompressor()
+pointcloud_decompressor::pointcloud_decompressor() : dictionary_representation()
 {
 
 }
@@ -117,138 +116,4 @@ void pointcloud_decompressor::display_cloud(pointcloud::Ptr display_cloud,
         viewer->spinOnce (100);
         boost::this_thread::sleep (boost::posix_time::microseconds (100000));
     }
-}
-
-void pointcloud_decompressor::read_dict_file(MatrixXf& dict, const std::string& file)
-{
-    std::ifstream dict_file(file, std::ios::binary);
-    int cols = dict.cols();
-    int rows = dict.rows();
-    dict_file.read((char*)&cols, sizeof(int));
-    dict_file.read((char*)&rows, sizeof(int));
-    dict.resize(rows, cols);
-    float value;
-    for (int j = 0; j < dict.cols(); ++j) {
-        for (int n = 0; n < dict.rows(); ++n) {
-            dict_file.read((char*)&value, sizeof(float));
-            dict(n, j) = value;
-        }
-    }
-    dict_file.close();
-}
-
-bool pointcloud_decompressor::read_bool(std::ifstream& i, u_char& buffer, int& b)
-{
-    if (b == 0 || b == 8) {
-        i.read((char*)&buffer, sizeof(u_char));
-        b = 0;
-    }
-    bool bit = (buffer >> b) & u_char(1);
-    b++;
-    return bit;
-}
-
-void pointcloud_decompressor::read_from_file(const std::string& file)
-{
-    std::string rgbfile = file + "rgb.pcdict";
-    read_dict_file(RGB_D, rgbfile);
-    std::string depthfile = file + "depth.pcdict";
-    read_dict_file(D, depthfile);
-    std::string code = file + ".pccode";
-
-    std::ifstream code_file(code, std::ios::binary);
-    int nbr;
-    code_file.read((char*)&nbr, sizeof(int)); // number of patches
-    code_file.read((char*)&sz, sizeof(int));
-    code_file.read((char*)&words_max, sizeof(int));
-    code_file.read((char*)&RGB_words_max, sizeof(int));
-
-    S.resize(sz*sz, nbr);
-    W.resize(sz*sz, nbr);
-    RGB.resize(sz*sz, 3*nbr);
-    rotations.resize(nbr);
-    means.resize(nbr);
-    RGB_means.resize(nbr);
-
-    X.resize(words_max, nbr);
-    I.resize(words_max, nbr);
-    number_words.resize(nbr);
-
-    RGB_X.resize(RGB_words_max, 3*nbr);
-    RGB_I.resize(RGB_words_max, 3*nbr);
-    RGB_number_words.resize(3*nbr);
-
-    code_file.read((char*)&dict_size, sizeof(int)); // dictionary size
-    code_file.read((char*)&RGB_dict_size, sizeof(int)); // RGB dictionary size
-    code_file.read((char*)&res, sizeof(float)); // size of voxels
-    float value;
-    for (int i = 0; i < S.cols(); ++i) { // means of patches
-        for (int n = 0; n < 3; ++n) {
-            code_file.read((char*)&value, sizeof(float));
-            means[i](n) = value;
-        }
-    }
-    /*for (int i = 0; i < S.cols(); ++i) { // rotations of patches
-        for (int m = 0; m < 3; ++m) {
-            for (int n = 0; n < 3; ++n) {
-                code_file.read((char*)&value, sizeof(float));
-                rotations[i](m, n) = value;
-            }
-        }
-    }*/
-    for (int i = 0; i < S.cols(); ++i) { // rotations of patches
-        for (int n = 0; n < 4; ++n) {
-            code_file.read((char*)&value, sizeof(float));
-            rotations[i].coeffs()(n) = value;
-        }
-    }
-    u_char words;
-    for (int i = 0; i < S.cols(); ++i) { // number of words and codes
-        code_file.read((char*)&words, sizeof(u_char));
-        number_words[i] = words;
-        for (int n = 0; n < words; ++n) {
-            code_file.read((char*)&value, sizeof(float));
-            X(n, i) = value;
-        }
-    }
-    uint16_t word;
-    for (int i = 0; i < S.cols(); ++i) { // dictionary entries used
-        for (int n = 0; n < number_words[i]; ++n) {
-            code_file.read((char*)&word, sizeof(uint16_t));
-            /*std::cout << I.col(i).transpose() << std::endl;
-            std::cout << I.row(n) << std::endl;
-            std::cout << n << " " << i << " " << I.rows() << " " << I.cols() << " " << number_words[i] << std::endl;*/
-            I(n, i) = int(word);
-        }
-    }
-    for (int i = 0; i < S.cols(); ++i) { // rgb means of patches
-        for (int n = 0; n < 3; ++n) {
-            code_file.read((char*)&value, sizeof(float));
-            RGB_means[i](n) = value;
-        }
-    }
-    for (int i = 0; i < 3*S.cols(); ++i) { // rgb number of words and codes
-        code_file.read((char*)&words, sizeof(u_char));
-        RGB_number_words[i] = words;
-        for (int n = 0; n < words; ++n) {
-            code_file.read((char*)&value, sizeof(float));
-            RGB_X(n, i) = value;
-        }
-    }
-    for (int i = 0; i < 3*S.cols(); ++i) { // rgb dictionary entries used
-        for (int n = 0; n < RGB_number_words[i]; ++n) {
-            code_file.read((char*)&word, sizeof(uint16_t));
-            RGB_I(n, i) = word;
-        }
-        //std::cout << RGB_I(0, i) << " " << RGB_I(0, i+1) << std::endl;
-        //std::cout << "-----------" << std::endl;
-    }
-    u_char buffer = 0;
-    int b = 0;
-    for (int i = 0; i < S.cols(); ++i) { // masks of patches
-        for (int n = 0; n < sz*sz; ++n) {
-            W(n, i) = read_bool(code_file, buffer, b);
-        }
-    }
-    code_file.close();
 }
