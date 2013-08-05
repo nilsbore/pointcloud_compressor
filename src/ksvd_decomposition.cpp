@@ -83,6 +83,29 @@ int ksvd_decomposition::compute_code()
     return mean_words / n;
 }
 
+float ksvd_decomposition::nipals_largest_singular(const MatrixXf& A, VectorXf& u, VectorXf& v)
+{
+    float threshold = 0.05;
+    int max_iter = 30;
+    float lambda = 0;
+    u.resize(A.rows());
+    u.setOnes();
+    u /= sqrt(float(u.rows()));
+    float old;
+    for (int m = 0; m < max_iter; ++m) {
+        v = A.transpose()*u;
+        v.normalize();
+        u = A*v;
+        old = lambda;
+        lambda = u.squaredNorm();
+        if ((lambda - old) < threshold*lambda) {
+            break;
+        }
+    }
+    u /= sqrt(lambda);
+    return sqrt(lambda);
+}
+
 void ksvd_decomposition::optimize_dictionary()
 {
     MatrixXf SL;
@@ -90,6 +113,8 @@ void ksvd_decomposition::optimize_dictionary()
     MatrixXf DXL;
     RowVectorXf XLj;
     VectorXf U(l);
+    VectorXf V;
+    float sigma;
     int ind;
     for (int j = 0; j < dict_size; ++j) {
         if (L[j].size() == 0) { // if this happens we should probably randomize a new vector
@@ -112,12 +137,21 @@ void ksvd_decomposition::optimize_dictionary()
                 DXL.col(i) += X(k, ind)*D.col(I(k, ind));
             }
         }
-        JacobiSVD<MatrixXf> svd(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(),
+        /*JacobiSVD<MatrixXf> svd(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(),
                                 ComputeThinU | ComputeThinV);
-        U = svd.matrixU().col(0);
-        U.normalize();
+        VectorXf U1 = svd.matrixU().col(0);
+        VectorXf V1 = svd.matrixV().col(0);
+        float s1 = svd.singularValues()(0);
+        VectorXf U2, V2;
+        float s2 = nipals_largest_singular(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(), U2, V2);
+        std::cout << s1 - s2 << std::endl;
+        std::cout << U1.transpose() - U2.transpose() << std::endl;
+        std::cout << V1.transpose() - V2.transpose() << std::endl;
+        exit(0);*/
+
+        sigma = nipals_largest_singular(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(), U, V);
         D.col(j) = U;
-        XLj = svd.singularValues()(0)*svd.matrixV().col(0);
+        XLj = sigma*V;
         for (int i = 0; i < L[j].size(); ++i) {
             X(Lk[j][i], L[j][i]) = XLj(i);
         }

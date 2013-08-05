@@ -28,6 +28,7 @@ private:
     std::vector<int> unused;
     void decompose();
     int compute_code();
+    float nipals_largest_singular(const Eigen::MatrixXf& A, Eigen::VectorXf& u, Eigen::VectorXf& v);
     void optimize_dictionary();
     float compute_error();
     void replace_unused();
