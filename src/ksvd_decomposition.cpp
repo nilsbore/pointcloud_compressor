@@ -85,8 +85,8 @@ int ksvd_decomposition::compute_code()
 
 float ksvd_decomposition::nipals_largest_singular(const MatrixXf& A, VectorXf& u, VectorXf& v)
 {
-    float threshold = 0.05;
-    int max_iter = 30;
+    float threshold = 0.01;
+    int max_iter = 20;
     float lambda = 0;
     u.resize(A.rows());
     u.setOnes();
@@ -98,10 +98,12 @@ float ksvd_decomposition::nipals_largest_singular(const MatrixXf& A, VectorXf& u
         u = A*v;
         old = lambda;
         lambda = u.squaredNorm();
+        //std::cout << (lambda - old)/lambda << " "; // for checking convergence threshold
         if ((lambda - old) < threshold*lambda) {
             break;
         }
     }
+    //std::cout << std::endl; // for checking convergence threshold
     u /= sqrt(lambda);
     return sqrt(lambda);
 }
@@ -149,6 +151,11 @@ void ksvd_decomposition::optimize_dictionary()
         std::cout << V1.transpose() - V2.transpose() << std::endl;
         exit(0);*/
 
+        JacobiSVD<MatrixXf> svd(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(),
+                                        ComputeThinU | ComputeThinV);
+        /*U = svd.matrixU().col(0);
+        V = svd.matrixV().col(0);
+        sigma = svd.singularValues()(0);*/
         sigma = nipals_largest_singular(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(), U, V);
         D.col(j) = U;
         XLj = sigma*V;
