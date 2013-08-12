@@ -72,9 +72,24 @@ void pointcloud_decompressor::reproject_cloud()
                 ncloud->at(counter).x = pt(0);
                 ncloud->at(counter).y = pt(1);
                 ncloud->at(counter).z = pt(2);
-                ncloud->at(counter).r = short(RGB_means[i](0) + RGB(ind, i));
-                ncloud->at(counter).g = short(RGB_means[i](1) + RGB(ind, S.cols() + i));
-                ncloud->at(counter).b = short(RGB_means[i](2) + RGB(ind, 2*S.cols() + i));
+                if (short(RGB_means[i](0) + RGB(ind, i)) > 255) {
+                    ncloud->at(counter).r = 255;
+                }
+                else {
+                    ncloud->at(counter).r = short(RGB_means[i](0) + RGB(ind, i));
+                }
+                if (short(RGB_means[i](1) + RGB(ind, S.cols() + i)) > 255) {
+                    ncloud->at(counter).g = 255;
+                }
+                else {
+                    ncloud->at(counter).g = short(RGB_means[i](1) + RGB(ind, S.cols() + i));
+                }
+                if (short(RGB_means[i](2) + RGB(ind, 2*S.cols() + i)) > 255) {
+                    ncloud->at(counter).b = 255;
+                }
+                else {
+                    ncloud->at(counter).b = short(RGB_means[i](2) + RGB(ind, 2*S.cols() + i));
+                }
                 ++counter;
             }
         }

@@ -151,9 +151,9 @@ void ksvd_decomposition::optimize_dictionary()
         std::cout << V1.transpose() - V2.transpose() << std::endl;
         exit(0);*/
 
-        JacobiSVD<MatrixXf> svd(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(),
+        /*JacobiSVD<MatrixXf> svd(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(),
                                         ComputeThinU | ComputeThinV);
-        /*U = svd.matrixU().col(0);
+        U = svd.matrixU().col(0);
         V = svd.matrixV().col(0);
         sigma = svd.singularValues()(0);*/
         sigma = nipals_largest_singular(SL - (WL*(DXL-D.col(j)*XLj).array()).matrix(), U, V);
