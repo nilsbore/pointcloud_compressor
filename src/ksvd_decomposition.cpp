@@ -1,4 +1,5 @@
 #include "ksvd_decomposition.h"
+#include "orthogonal_matching_pursuit.h"
 
 #include <cstdlib>
 #include <ctime>

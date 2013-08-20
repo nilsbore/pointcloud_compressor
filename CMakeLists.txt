@@ -12,6 +12,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 add_library(pointcloud_compressor src/pointcloud_compressor.cpp)
 add_library(pointcloud_decompressor src/pointcloud_decompressor.cpp)
+add_library(orthogonal_matching_pursuit src/orthogonal_matching_pursuit.cpp)
 add_library(ksvd_decomposition src/ksvd_decomposition.cpp)
 add_library(dictionary_representation src/dictionary_representation.cpp)
 add_executable(test_compress src/test_compress.cpp)
