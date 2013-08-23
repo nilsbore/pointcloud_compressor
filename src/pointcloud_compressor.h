@@ -13,7 +13,7 @@ public:
     typedef pcl::PointXYZRGB point;
     typedef pcl::PointCloud<point> pointcloud;
 private:
-    pointcloud::Ptr cloud; // the input pointcloud with RGB color information
+    pointcloud::ConstPtr cloud; // the input pointcloud with RGB color information
 
     float proj_error; // the error at which the orthogonal matching pursuit stops in ksvd
     float RGB_proj_error; // the error at which the orthogonal matching pursuit stops in ksvd
@@ -28,7 +28,7 @@ private:
     void compress_depths();
     void compress_colors();
 public:
-    pointcloud_compressor(const std::string& filename, float res = 0.1f, int sz = 10, int dict_size = 100,
+    pointcloud_compressor(pointcloud::ConstPtr cloud, float res = 0.1f, int sz = 10, int dict_size = 100,
                           int words_max = 10, float proj_error = 1e-3f, float stop_diff = 1e-5f, int RGB_dict_size = 200,
                           int RGB_words_max = 20, float RGB_proj_error = 1e3f, float RGB_stop_diff = 1e2f);
     void save_compressed(const std::string& name);

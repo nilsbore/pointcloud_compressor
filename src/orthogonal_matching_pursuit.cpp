@@ -62,8 +62,6 @@ int orthogonal_matching_pursuit::omp_match_vector(VectorXf& Xi, VectorXi& Ii, Ve
         L[ind].push_back(i); // this is done because we do it in the opposite way her
         Lk[ind].push_back(k); // when recreating, focus lies on recreating the patches fast
 
-        //norms(k) = xk.norm();
-
         if (k > 0) {
             // hitta korrelationen med de tidigare
             if (k == 1) { // flytta upp
@@ -80,8 +78,7 @@ int orthogonal_matching_pursuit::omp_match_vector(VectorXf& Xi, VectorXi& Ii, Ve
             vk.resize(k);
             xk = mask.array()*D.col(ind).array();
             for (int m = 0; m < k; ++m) {
-                // xk is needed for the masking
-                //vk(m) = 1.0f / (norms_t(Ii(k)) * norms_t(Ii(m))) * xk.transpose()*D.col(Ii(m));
+                // xk is needed for the masking;
                 vk(m) = xk.transpose()*D.col(Ii(m));
             }
 

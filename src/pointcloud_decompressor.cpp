@@ -7,17 +7,17 @@
 
 using namespace Eigen;
 
-pointcloud_decompressor::pointcloud_decompressor() : dictionary_representation()
+pointcloud_decompressor::pointcloud_decompressor(bool display) : dictionary_representation(), display(display)
 {
 
 }
 
-void pointcloud_decompressor::load_compressed(const std::string& name)
+pointcloud_decompressor::pointcloud::Ptr pointcloud_decompressor::load_compressed(const std::string& name)
 {
     read_from_file(name);
     decompress_depths();
     decompress_colors();
-    reproject_cloud();
+    return reproject_cloud();
 }
 
 void pointcloud_decompressor::decompress_depths()
@@ -40,7 +40,7 @@ void pointcloud_decompressor::decompress_colors()
     }
 }
 
-void pointcloud_decompressor::reproject_cloud()
+pointcloud_decompressor::pointcloud::Ptr pointcloud_decompressor::reproject_cloud()
 {
     int n = S.cols();
     pointcloud::Ptr ncloud(new pointcloud);
@@ -68,7 +68,7 @@ void pointcloud_decompressor::reproject_cloud()
                 pt(0) = S(ind, i);
                 pt(1) = (float(x) + 0.5f)*res/float(sz) - res/2.0f;
                 pt(2) = (float(y) + 0.5f)*res/float(sz) - res/2.0f;
-                pt = rotations[i].toRotationMatrix() *pt + means[i];
+                pt = rotations[i].toRotationMatrix()*pt + means[i];
                 ncloud->at(counter).x = pt(0);
                 ncloud->at(counter).y = pt(1);
                 ncloud->at(counter).z = pt(2);
@@ -111,7 +111,10 @@ void pointcloud_decompressor::reproject_cloud()
     }
     ncloud->resize(counter);
     std::cout << "Size of transformed point cloud: " << ncloud->width*ncloud->height << std::endl;
-    display_cloud(ncloud, ncenters, normals);
+    if (display) {
+        display_cloud(ncloud, ncenters, normals);
+    }
+    return ncloud;
 }
 
 void pointcloud_decompressor::display_cloud(pointcloud::Ptr display_cloud,

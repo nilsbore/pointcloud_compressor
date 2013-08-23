@@ -10,18 +10,14 @@
 
 using namespace Eigen;
 
-pointcloud_compressor::pointcloud_compressor(const std::string& filename, float res, int sz, int dict_size,
+pointcloud_compressor::pointcloud_compressor(pointcloud::ConstPtr cloud, float res, int sz, int dict_size,
                                              int words_max, float proj_error, float stop_diff, int RGB_dict_size,
                                              int RGB_words_max, float RGB_proj_error, float RGB_stop_diff) :
     dictionary_representation(res, sz, dict_size, words_max, RGB_dict_size, RGB_words_max),
-    cloud(new pointcloud), proj_error(proj_error), RGB_proj_error(RGB_proj_error),
+    cloud(cloud), proj_error(proj_error), RGB_proj_error(RGB_proj_error),
     stop_diff(stop_diff), RGB_stop_diff(RGB_stop_diff)
 {
-    if (pcl::io::loadPCDFile<point> (filename, *cloud) == -1)
-    {
-      PCL_ERROR("Couldn't read file room_scan2.pcd \n");
-      return;
-    }
+
 }
 
 void pointcloud_compressor::save_compressed(const std::string& name)
@@ -116,7 +112,6 @@ void pointcloud_compressor::project_points(Vector3f& center, const Matrix3f& R, 
     RGB.col(2*S.cols() + i).array() -= mn;
     RGB_means[i](2) = mn;
     W.col(i) = count > 0;
-    //S.col(j).array() *= isSet.cast<float>(); // this is mostly for debugging
 }
 
 void pointcloud_compressor::project_cloud()
@@ -130,7 +125,6 @@ void pointcloud_compressor::project_cloud()
 
     S.resize(sz*sz, centers.size());
     W.resize(sz*sz, centers.size());
-    //RGB.resize(3*sz*sz, centers.size());
     RGB.resize(sz*sz, 3*centers.size());
     rotations.resize(centers.size());
     means.resize(centers.size());
@@ -161,8 +155,6 @@ void pointcloud_compressor::project_cloud()
         compute_rotation(R, points);
         mid = Vector3f(center.x, center.y, center.z);
         project_points(mid, R, points, colors, index_search, occupied_indices, i);
-        //rotations[i] = R; // rewrite all this shit to use arrays instead
-        //Quaternionf Q = R;
         rotations[i] = R;
         means[i] = mid;
     }
