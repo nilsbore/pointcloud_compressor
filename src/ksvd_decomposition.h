@@ -19,7 +19,7 @@ private:
     // the difference between iteration errors when the algorithm terminates
     float stop_diff;
     int l; // length of vectors in S, D
-    int n; // number of vectors in S, e.g. number of patces
+    int n; // number of vectors in S, e.g. number of patches
     // indices of patches using a dictinary entry in one algorithm pass
     std::vector<std::vector<int>> L;
     // the indices in I and X that these entries are associated to

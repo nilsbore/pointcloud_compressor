@@ -50,36 +50,15 @@ void ksvd_decomposition::decompose()
 
 int ksvd_decomposition::compute_code()
 {
-    int ind;
+    orthogonal_matching_pursuit omp(D, words_max, proj_error, L, Lk);
     int mean_words = 0;
-    ArrayXf mask(l);
-    VectorXf residual(l);
-    ArrayXf weights(dict_size);
+    VectorXf Xi(words_max);
+    VectorXi Ii(words_max);
     for (int i = 0; i < n; ++i) {
-        //s = VectorXf::Map(patches[i].data(), l);
-        //mask = Array<bool, Dynamic, 1>::Map(masks[i].data(), l).cast<float>();
-        mask = W.col(i).cast<float>();
-        residual = mask*S.col(i).array();
-        int k;
-        for (k = 0; k < words_max; ++k) {
-            if (residual.squaredNorm() < proj_error) {
-                break;
-            }
-            weights = residual.transpose()*D;
-            for (int m = 0; m < k; ++m) {
-                //X(m, i) += weights(I(m, i));
-                //residual.array() -= weights(I(m, i))*mask*D.col(I(m, i)).array();
-                weights(I(m, i)) = 0;
-            }
-            weights.abs().maxCoeff(&ind);
-            X(k, i) = weights(ind);
-            I(k, i) = ind;
-            residual.array() -= X(k, i)*mask*D.col(ind).array();
-            L[ind].push_back(i); // this is done because we do it in the opposite way her
-            Lk[ind].push_back(k); // when recreating, focus lies on recreating the patches fast
-        }
-        number_words[i] = k;
-        mean_words += k;
+        number_words[i] = omp.omp_match_vector(Xi, Ii, S.col(i), W.col(i).cast<float>(), i);
+        X.col(i) = Xi;
+        I.col(i) = Ii;
+        mean_words += number_words[i];
     }
     return mean_words / n;
 }
@@ -119,6 +98,7 @@ void ksvd_decomposition::optimize_dictionary()
     VectorXf V;
     float sigma;
     int ind;
+
     for (int j = 0; j < dict_size; ++j) {
         if (L[j].size() == 0) { // if this happens we should probably randomize a new vector
             unused.push_back(j);

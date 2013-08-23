@@ -19,6 +19,7 @@ add_executable(test_compress src/test_compress.cpp)
 add_executable(test_decompress src/test_decompress.cpp)
 
 target_link_libraries(dictionary_representation ${PCL_LIBRARIES})
+target_link_libraries(ksvd_decomposition orthogonal_matching_pursuit)
 target_link_libraries(pointcloud_compressor ksvd_decomposition dictionary_representation ${PCL_LIBRARIES})
 target_link_libraries(pointcloud_decompressor dictionary_representation ${PCL_LIBRARIES})
 target_link_libraries(test_compress pointcloud_compressor)
